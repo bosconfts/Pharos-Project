@@ -1,0 +1,14 @@
+pycardano>=0.11.0
+blockfrost-python>=0.5.3
+httpx==0.27.0
+python-dotenv==1.0.1
+fastapi==0.115.0
+uvicorn==0.30.6
+anthropic==0.34.2
+# M2
+psycopg2-binary
+pgvector==0.3.2
+sentence-transformers==3.0.1
+torch>=2.9.0
+# M3/M4
+neo4j>=5.0.0

@@ -1,0 +1,45 @@
+.conflict-card {
+  background: #1a202c;
+  border: 1px solid #2d3748;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+.conflict-card h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #718096; margin-bottom: 12px;
+}
+
+.conflict-na { font-size: 12px; color: #4a5568; }
+
+.conflict-meta {
+  display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px;
+}
+.conflict-meta-label { font-size: 10px; color: #718096; text-transform: uppercase; }
+.conflict-meta-value { font-size: 13px; color: #e2e8f0; font-weight: 600; }
+.conflict-addr       { font-size: 11px; color: #63b3ed; font-family: monospace; }
+
+.conflict-clean {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  font-size: 13px; color: #68d391;
+}
+.conflict-clean-icon { font-size: 16px; }
+
+.conflict-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+
+.conflict-item {
+  background: #0f1117;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.conflict-item-header {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 4px;
+}
+.conflict-sev  { font-size: 11px; font-weight: 700; }
+.conflict-type { font-size: 10px; color: #718096; text-transform: capitalize; }
+.conflict-desc { font-size: 12px; color: #a0aec0; margin-bottom: 6px; line-height: 1.5; }
+.conflict-txhash {
+  font-size: 10px; color: #63b3ed; font-family: monospace;
+  text-decoration: none; display: block;
+}
+.conflict-txhash:hover { text-decoration: underline; }

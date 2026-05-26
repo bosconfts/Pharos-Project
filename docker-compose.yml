@@ -1,0 +1,29 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pil_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       pil
+      POSTGRES_USER:     pil
+      POSTGRES_PASSWORD: pil_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pil_pgdata:/var/lib/postgresql/data
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: pil_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/pil_neo4j_secret
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - pil_neo4j:/data
+
+volumes:
+  pil_pgdata:
+  pil_neo4j:

@@ -1,0 +1,40 @@
+.risk-card {
+  background: #1a202c;
+  border: 1px solid #2d3748;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+.risk-card h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #718096; margin-bottom: 12px;
+}
+
+.risk-header {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+}
+.risk-gauge { width: 110px; flex-shrink: 0; }
+.gauge-svg  { width: 100%; height: auto; }
+
+.risk-level {
+  font-size: 16px; font-weight: 800; letter-spacing: 0.5px;
+}
+
+.risk-components { display: flex; flex-direction: column; gap: 10px; }
+
+.risk-row { display: flex; gap: 8px; align-items: flex-start; }
+.risk-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+.risk-info { flex: 1; min-width: 0; }
+.risk-comp-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+}
+.risk-comp-label  { font-size: 11px; color: #e2e8f0; font-weight: 600; flex: 1; }
+.risk-comp-weight { font-size: 10px; color: #4a5568; }
+.risk-comp-score  { font-size: 11px; font-weight: 700; font-family: monospace; }
+
+.risk-bar-bg {
+  height: 4px; background: #2d3748; border-radius: 2px; overflow: hidden; margin-bottom: 3px;
+}
+.risk-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+.risk-evidence { font-size: 10px; color: #4a5568; line-height: 1.4; }

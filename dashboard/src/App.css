@@ -1,0 +1,30 @@
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Header */
+.header { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 0 24px; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; max-width: 1400px; margin: 0 auto; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-pill { background: #4299e1; color: #fff; font-weight: 700; font-size: 13px; padding: 3px 8px; border-radius: 4px; letter-spacing: 1px; }
+.logo-text { font-size: 15px; font-weight: 600; color: #e2e8f0; }
+.header-meta { display: flex; gap: 8px; align-items: center; }
+.network-badge { background: #2d3748; color: #68d391; font-size: 11px; padding: 2px 8px; border-radius: 12px; border: 1px solid #2f6046; }
+.stat-badge { background: #2d3748; color: #90cdf4; font-size: 11px; padding: 2px 8px; border-radius: 12px; }
+
+/* Main layout */
+.main { display: flex; flex: 1; max-width: 1400px; margin: 0 auto; width: 100%; padding: 16px; gap: 16px; }
+.sidebar { width: 380px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+.detail { flex: 1; min-width: 0; }
+
+/* Tabs */
+.tab-bar { display: flex; gap: 4px; padding: 4px; background: #1a202c; border-radius: 8px; }
+.tab { flex: 1; background: transparent; border: none; color: #718096; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+.tab:hover { color: #e2e8f0; }
+.tab.active { background: #2d3748; color: #e2e8f0; font-weight: 600; }
+
+/* Loading */
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 16px; color: #718096; }
+.spinner { width: 36px; height: 36px; border: 3px solid #2d3748; border-top-color: #4299e1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty */
+.empty { display: flex; align-items: center; justify-content: center; height: 300px; color: #4a5568; font-size: 14px; }

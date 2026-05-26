@@ -1,0 +1,51 @@
+.detail-wrap { display: flex; flex-direction: column; gap: 12px; }
+.detail-error { color: #fc8181; padding: 24px; }
+
+.detail-card {
+  background: #1a202c;
+  border: 1px solid #2d3748;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+.detail-card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #718096; margin-bottom: 10px; }
+
+.detail-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.detail-type { font-size: 11px; font-weight: 700; color: #90cdf4; text-transform: uppercase; letter-spacing: 1px; }
+.risk-badge  { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+.detail-title { font-size: 18px; font-weight: 700; color: #e2e8f0; line-height: 1.3; margin-bottom: 10px; }
+.detail-oneliner { font-size: 14px; color: #a0aec0; line-height: 1.6; margin-bottom: 12px; }
+.detail-text { font-size: 13px; color: #a0aec0; line-height: 1.7; }
+
+.steps-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.step-badge.ok   { background: #1c3829; color: #68d391; }
+.step-badge.skip { background: #2d2a1a; color: #fbd38d; }
+.step-badge.err  { background: #2d1a1a; color: #fc8181; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.span-full { grid-column: 1 / -1; }
+
+.sim-summary { font-size: 13px; color: #a0aec0; margin-bottom: 12px; }
+
+.pie-wrap { position: relative; }
+.delivery-rate { text-align: center; margin-top: -8px; }
+.rate-number { font-size: 28px; font-weight: 800; color: #68d391; }
+.rate-label { display: block; font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.similar-list { display: flex; flex-direction: column; gap: 8px; }
+.similar-item { background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 10px 12px; }
+.similar-header { display: flex; gap: 12px; align-items: center; margin-bottom: 4px; }
+.similar-type { font-size: 10px; color: #90cdf4; font-weight: 600; text-transform: uppercase; }
+.similar-score { font-size: 10px; color: #fbd38d; }
+.similar-status { font-size: 10px; margin-left: auto; }
+.similar-title { font-size: 12px; color: #e2e8f0; margin-bottom: 2px; }
+.similar-id { font-size: 10px; color: #4a5568; font-family: monospace; }
+
+.onchain-info { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.onchain-label { font-size: 10px; color: #718096; text-transform: uppercase; }
+.onchain-hash { font-size: 12px; font-family: monospace; color: #63b3ed; word-break: break-all; }
+
+.full-summary { display: flex; flex-direction: column; gap: 12px; }
+.full-section { border-left: 2px solid #4299e1; padding-left: 12px; }
+.full-key { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+.full-val { font-size: 13px; color: #a0aec0; line-height: 1.6; }
