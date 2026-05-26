@@ -9,6 +9,7 @@ anthropic==0.34.2
 psycopg2-binary
 pgvector==0.3.2
 sentence-transformers==3.0.1
+# torch CPU-only (instalado separadamente no Dockerfile via --index-url)
 torch>=2.9.0
 # M3/M4
 neo4j>=5.0.0
