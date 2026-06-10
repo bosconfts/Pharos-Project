@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/Pharos-Project/",
+  base: "/",
   server: {
     proxy: {
       "/api": {
