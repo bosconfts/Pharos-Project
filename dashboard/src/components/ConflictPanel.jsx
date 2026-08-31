@@ -4,7 +4,13 @@ const SEV_COLOR = {
   HIGH:   "#fc8181",
   MEDIUM: "#fbd38d",
   LOW:    "#90cdf4",
+  INFO:   "#a0aec0",
 };
+
+// INFO é divulgação, não achado (ex.: o proponente é beneficiário declarado,
+// que é o desenho normal de uma retirada de tesouraria). Separar os dois evita
+// que o painel pareça acusar onde só está informando.
+const isFinding = (c) => c.severity !== "INFO";
 
 export default function ConflictPanel({ conflict }) {
   if (!conflict) return null;
@@ -21,6 +27,8 @@ export default function ConflictPanel({ conflict }) {
   }
 
   const ada = total_withdrawal_lovelace ? (total_withdrawal_lovelace / 1_000_000).toLocaleString() : null;
+  const findings    = conflicts.filter(isFinding);
+  const disclosures = conflicts.filter((c) => !isFinding(c));
 
   return (
     <div className="conflict-card">
@@ -40,14 +48,33 @@ export default function ConflictPanel({ conflict }) {
         </div>
       )}
 
-      {conflicts.length === 0 ? (
+      {findings.length === 0 && (
         <div className="conflict-clean">
           <span className="conflict-clean-icon">✅</span>
-          <span>No financial conflicts detected</span>
+          <span>No undisclosed financial relationships detected</span>
         </div>
-      ) : (
+      )}
+
+      {disclosures.length > 0 && (
         <div className="conflict-list">
-          {conflicts.map((c, i) => (
+          {disclosures.map((c, i) => (
+            <div key={`d${i}`} className="conflict-item">
+              <div className="conflict-item-header">
+                <span className="conflict-sev" style={{ color: SEV_COLOR.INFO }}>
+                  ● DISCLOSURE
+                </span>
+                <span className="conflict-type">{c.type?.replace(/_/g, " ")}</span>
+              </div>
+              <p className="conflict-desc">{c.description}</p>
+              {c.note && <p className="conflict-desc">{c.note}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {findings.length > 0 && (
+        <div className="conflict-list">
+          {findings.map((c, i) => (
             <div key={i} className="conflict-item">
               <div className="conflict-item-header">
                 <span className="conflict-sev" style={{ color: SEV_COLOR[c.severity] || "#a0aec0" }}>

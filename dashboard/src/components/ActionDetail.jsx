@@ -134,22 +134,28 @@ export default function ActionDetail({ analysis }) {
           </div>
         )}
 
-        {/* On-chain Publication */}
-        {onChain?.tx_hash && (
+        {/* On-chain Publication — o hash do documento existe assim que a
+            análise roda; a ancoragem é um passo separado e posterior. */}
+        {analysis.pil_document_hash && (
           <div className="detail-card">
             <h3>On-chain Publication</h3>
             <div className="onchain-info">
-              <span className="onchain-label">TX Hash</span>
-              <a className="onchain-hash"
-                 href={`https://cardanoscan.io/transaction/${onChain.tx_hash}`}
-                 target="_blank" rel="noopener noreferrer">
-                {onChain.tx_hash.slice(0, 32)}…
-              </a>
+              <span className="onchain-label">PIL Doc Hash</span>
+              <code className="onchain-hash">{analysis.pil_document_hash.slice(0, 32)}…</code>
             </div>
-            {analysis.pil_document_hash && (
+            {onChain?.tx_hash ? (
               <div className="onchain-info">
-                <span className="onchain-label">PIL Doc Hash</span>
-                <code className="onchain-hash">{analysis.pil_document_hash.slice(0, 32)}…</code>
+                <span className="onchain-label">TX Hash</span>
+                <a className="onchain-hash"
+                   href={`https://cardanoscan.io/transaction/${onChain.tx_hash}`}
+                   target="_blank" rel="noopener noreferrer">
+                  {onChain.tx_hash.slice(0, 32)}…
+                </a>
+              </div>
+            ) : (
+              <div className="onchain-info">
+                <span className="onchain-label">Anchor</span>
+                <span className="onchain-pending">Not yet anchored on-chain</span>
               </div>
             )}
           </div>

@@ -19,9 +19,26 @@ function statusDot(action) {
   return { color: "#fbd38d", label: "active" };
 }
 
-export default function ActionList({ actions, selected, onSelect }) {
+const RISK_COLOR = (score) =>
+  score >= 70 ? "#68d391" : score >= 45 ? "#fbd38d" : "#fc8181";
+
+export default function ActionList({ actions, state, tab, selected, onSelect }) {
+  // Uma lista vazia por API fora do ar e uma lista vazia por não haver
+  // propostas são situações diferentes, e antes as duas apareciam iguais.
+  if (state === "loading") {
+    return <div className="action-list-empty">Loading…</div>;
+  }
+  if (state === "offline") {
+    return <div className="action-list-empty">API unavailable</div>;
+  }
   if (!actions.length) {
-    return <div className="action-list-empty">Nenhuma proposal encontrada</div>;
+    return (
+      <div className="action-list-empty">
+        {tab === "history"
+          ? "No analyses published yet"
+          : "No governance actions on-chain"}
+      </div>
+    );
   }
 
   return (
@@ -40,7 +57,13 @@ export default function ActionList({ actions, selected, onSelect }) {
           >
             <div className="action-header">
               <span className="action-type" style={{ color }}>{a.action_type}</span>
-              <span className="action-status" style={{ color: dot.color }}>● {dot.label}</span>
+              {a.risk_score != null ? (
+                <span className="action-status" style={{ color: RISK_COLOR(a.risk_score) }}>
+                  {a.risk_score}/100
+                </span>
+              ) : (
+                <span className="action-status" style={{ color: dot.color }}>● {dot.label}</span>
+              )}
             </div>
             <div className="action-title">
               {a.title || a.one_liner || id.slice(0, 20) + "..."}
