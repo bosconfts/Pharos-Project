@@ -15,11 +15,16 @@ novos do Pharos são criados nele, para não depender do email pessoal.
 |---|---|---|
 | **Anthropic** | `joaobosco.ada@gmail.com` | `ANTHROPIC_API_KEY` — org `Pharos` |
 | **Neon** | `joaobosco.ada@gmail.com` | Postgres 18 + pgvector — org `Pharos`, projeto `pharos`, branch `production`, região AWS us-east-2 |
-| **Vercel** | conta criada via GitHub `bosconfts` | Hospedagem da API read-only (plano Hobby) |
+| **Vercel** | `joaobosco.ada@gmail.com` | Hospedagem da API read-only (plano Hobby) |
 | ~~Hugging Face Spaces~~ | `joaobosco.ada@gmail.com` | **Não usado.** Docker Spaces viraram PRO-only; o free tier só serve arquivos estáticos. |
 | **GitHub** | `bosconfts@gmail.com` (user `bosconfts`) | Repo público `bosconfts/Pharos-Project`, Pages (`pharosgov.io`) **e execução do worker via Actions** |
 | Blockfrost | `bosconfts@gmail.com` | `BLOCKFROST_PROJECT_ID` (mainnet) |
 | Render | — | **Abandonado.** Login quebrado, sem acesso. Não é mais o orquestrador. |
+
+Padrão que se repete: o login dos serviços é `joaobosco.ada`, mas o repositório
+é do GitHub `bosconfts`. As duas identidades convivem — o serviço pede
+autorização OAuth ao GitHub na hora de conectar o repo, e isso não exige que os
+emails coincidam.
 
 ### Onde cada peça roda
 
