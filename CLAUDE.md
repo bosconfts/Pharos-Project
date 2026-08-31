@@ -14,6 +14,9 @@ novos do Pharos são criados nele, para não depender do email pessoal.
 | Serviço | Conta | Uso |
 |---|---|---|
 | **Anthropic** | `joaobosco.ada@gmail.com` | `ANTHROPIC_API_KEY` — org `Pharos` |
+| **Neon** | `joaobosco.ada@gmail.com` | Postgres 18 + pgvector — org `Pharos`, projeto `pharos`, branch `production`, região AWS us-east-2 |
+| **Vercel** | conta criada via GitHub `bosconfts` | Hospedagem da API read-only (plano Hobby) |
+| ~~Hugging Face Spaces~~ | `joaobosco.ada@gmail.com` | **Não usado.** Docker Spaces viraram PRO-only; o free tier só serve arquivos estáticos. |
 | **GitHub** | `bosconfts@gmail.com` (user `bosconfts`) | Repo público `bosconfts/Pharos-Project`, Pages (`pharosgov.io`) **e execução do worker via Actions** |
 | Blockfrost | `bosconfts@gmail.com` | `BLOCKFROST_PROJECT_ID` (mainnet) |
 | Render | — | **Abandonado.** Login quebrado, sem acesso. Não é mais o orquestrador. |
@@ -23,14 +26,25 @@ novos do Pharos são criados nele, para não depender do email pessoal.
 | Peça | Host | Custo |
 |---|---|---|
 | Worker (M1–M4, cron 6h) | GitHub Actions | Grátis — minutos ilimitados em repo público |
-| Postgres 16 + pgvector | Neon (a criar) | Free tier |
-| API read-only | a definir (HF Spaces / Fly.io) | Free tier |
+| Postgres 18 + pgvector | Neon | Free tier |
+| API read-only | Vercel (Python serverless) | Hobby, grátis |
 | Dashboard | GitHub Pages | Grátis |
 | Neo4j (opcional) | Aura Free | M3 funciona sem ele |
 
 Isso só é viável porque a API ficou read-only e não carrega mais `torch`. Todo
 o peso está no worker, que é um job em lote — e job em lote é o que o Actions
 faz de graça.
+
+**Duas connection strings do Neon, de propósito:**
+
+- A API na Vercel usa a **pooled** (host com `-pooler`). Serverless abre muitas
+  conexões curtas e esgotaria o limite do Postgres sem o pooler.
+- O worker e a máquina local usam a **direta** (sem `-pooler`), porque o
+  pooler interfere em DDL — `CREATE EXTENSION`, `ALTER TABLE` do `init_db()`.
+
+**Dependências separadas por processo:** `requirements.txt` é só a API (é o que
+a Vercel instala, e torch não caberia no limite de tamanho de função);
+`requirements-worker.txt` inclui aquele e soma o pipeline pesado.
 
 A chave Anthropic anterior, criada na conta pessoal, foi exposta e **deve ser
 revogada**. Toda chave nova do projeto sai da conta Anthropic acima.

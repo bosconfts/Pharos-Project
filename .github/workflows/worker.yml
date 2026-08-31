@@ -50,7 +50,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
+          pip install -r requirements-worker.txt
 
       # O modelo de embeddings (all-MiniLM-L6-v2, ~90MB) é baixado no primeiro
       # uso. Sem cache, cada execução paga esse download.

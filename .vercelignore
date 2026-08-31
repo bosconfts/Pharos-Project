@@ -1,0 +1,26 @@
+# A Vercel hospeda apenas a API. O dashboard vai para o GitHub Pages e o
+# worker roda no GitHub Actions — nada disso precisa subir na função.
+dashboard/
+venv/
+wallet/
+.github/
+requirements-worker.txt
+Dockerfile
+docker-compose.yml
+render.yaml
+run_m1.py
+create_wallet.py
+
+# Módulos do pipeline que a API não importa. Mantê-los fora reduz o bundle e
+# garante que um import acidental de código pesado quebre no deploy, não em
+# produção.
+core/pipeline.py
+core/worker.py
+core/publisher.py
+core/step3_summarizer.py
+core/step6_backfill.py
+core/step7_embeddings.py
+core/step8_similarity.py
+core/step9_wallet_graph.py
+core/step10_conflict.py
+core/step11_risk_score.py

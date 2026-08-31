@@ -1,0 +1,21 @@
+# Dependências do worker (core/worker.py) e do publisher (core/publisher.py).
+# Inclui tudo que a API precisa, mais o pipeline pesado.
+#
+# torch é instalado à parte, na variante CPU-only:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+
+# M1 — anchor, resumos e documento PIL
+anthropic==0.34.2
+
+# M2 — embeddings e busca por similaridade
+pgvector==0.3.2
+sentence-transformers==3.0.1
+torch>=2.9.0
+
+# M3 — grafo de carteiras (opcional; o M3 funciona sem Neo4j)
+neo4j>=5.0.0
+
+# Publicação on-chain — usado apenas por core/publisher.py
+pycardano>=0.11.0
+blockfrost-python>=0.5.3
