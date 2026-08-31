@@ -59,31 +59,56 @@ def run(limit: int = 5, dry_run: bool = True) -> dict:
 
     for row in pending:
         gid = row["gov_action_id"]
-        doc = row["pil_document"]
-        # Recomputa o hash a partir do documento persistido em vez de confiar na
-        # coluna: garante que o que vai on-chain corresponde ao que está no banco.
-        doc_hash = compute_document_hash(doc)
 
-        if doc_hash != (row.get("pil_doc_hash") or doc_hash):
-            print(f"⚠️  {gid[:24]}… hash divergente do registrado — pulando")
+        # Cada documento é isolado: uma linha malformada não pode abortar o lote
+        # e deixar os demais sem publicar — pior ainda se estourar depois de um
+        # submit, que perderia o registro de uma transação já paga.
+        try:
+            doc    = row.get("pil_document")
+            stored = row.get("pil_doc_hash")
+
+            if not doc:
+                print(f"⚠️  {gid[:24]}… sem documento PIL — pulando")
+                stats["failed"] += 1
+                continue
+
+            # Recomputa o hash a partir do documento persistido em vez de
+            # confiar na coluna: garante que o que vai on-chain corresponde ao
+            # que está no banco.
+            doc_hash = compute_document_hash(doc)
+
+            # Falha fechado. Sem hash registrado não há com o que comparar, e
+            # publicar assim gastaria ADA ancorando um documento cuja
+            # integridade ninguém conferiu.
+            if not stored:
+                print(f"⚠️  {gid[:24]}… sem hash registrado para conferir — pulando")
+                stats["failed"] += 1
+                continue
+
+            if doc_hash != stored:
+                print(f"⚠️  {gid[:24]}… hash divergente do registrado — pulando")
+                stats["failed"] += 1
+                continue
+
+            if dry_run:
+                print(f"[dry-run] {gid[:24]}… → publicaria doc_hash {doc_hash[:32]}…")
+                continue
+
+            print(f"→ {gid[:24]}… submetendo…")
+            result = publish_on_chain(doc, doc_hash)
+
+            if result.get("status") == "submitted":
+                set_on_chain_result(gid, "submitted", result["tx_hash"])
+                stats["submitted"] += 1
+                print(f"   ✅ tx {result['tx_hash']}")
+            else:
+                set_on_chain_result(gid, result.get("status", "error"))
+                stats["failed"] += 1
+                print(f"   ❌ {result.get('status')}: {result.get('reason')}")
+
+        except Exception as e:
             stats["failed"] += 1
-            continue
-
-        if dry_run:
-            print(f"[dry-run] {gid[:24]}… → publicaria doc_hash {doc_hash[:32]}…")
-            continue
-
-        print(f"→ {gid[:24]}… submetendo…")
-        result = publish_on_chain(doc, doc_hash)
-
-        if result.get("status") == "submitted":
-            set_on_chain_result(gid, "submitted", result["tx_hash"])
-            stats["submitted"] += 1
-            print(f"   ✅ tx {result['tx_hash']}")
-        else:
-            set_on_chain_result(gid, result.get("status", "error"))
-            stats["failed"] += 1
-            print(f"   ❌ {result.get('status')}: {result.get('reason')}")
+            print(f"   ❌ {gid[:24]}… erro inesperado: {e}")
 
     return stats
 
