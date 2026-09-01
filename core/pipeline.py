@@ -93,6 +93,9 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
                 result["errors"].append(f"S3 error: {e}")
                 result["steps"]["s3_summarizer"] = "error"
                 summaries = {"one_liner": fields.get("title", ""), "technical": "", "full": {}}
+                # Sem isto o resultado sai sem `summaries` e a pagina perde a
+                # abertura em linguagem simples: a degradacao some da vista.
+                result["summaries"] = summaries
             log(f"  S3 summarizer: {result['steps'].get('s3_summarizer')}")
 
             try:

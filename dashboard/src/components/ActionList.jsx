@@ -1,86 +1,78 @@
 import "./ActionList.css";
 
-const TYPE_COLORS = {
-  InfoAction:           "#90cdf4",
-  TreasuryWithdrawals:  "#fbd38d",
-  ParameterChange:      "#9ae6b4",
-  HardForkInitiation:   "#fc8181",
-  NoConfidence:         "#f687b3",
-  NewConstitution:      "#b794f4",
-  NewCommittee:         "#76e4f7",
-  UpdateCommittee:      "#76e4f7",
+// O tipo da ação era uma de oito cores. Vira texto: a distinção é semântica,
+// não cromática, e oito cores competindo é o que fazia a página parecer ruído.
+const TYPE_LABEL = {
+  InfoAction:          "Info",
+  TreasuryWithdrawals: "Treasury",
+  ParameterChange:     "Parameter",
+  HardForkInitiation:  "Hard fork",
+  NoConfidence:        "No confidence",
+  NewConstitution:     "Constitution",
+  NewCommittee:        "Committee",
+  UpdateCommittee:     "Committee",
 };
 
-function statusDot(action) {
-  if (action.enacted_epoch)  return { color: "#68d391", label: "enacted" };
-  if (action.ratified_epoch) return { color: "#90cdf4", label: "ratified" };
-  if (action.expired_epoch)  return { color: "#fc8181", label: "expired" };
-  if (action.dropped_epoch)  return { color: "#718096", label: "dropped" };
-  return { color: "#fbd38d", label: "active" };
+const riskTone = (s) => (s >= 70 ? "low" : s >= 45 ? "med" : "high");
+
+function status(a) {
+  if (a.enacted_epoch)  return "Enacted";
+  if (a.ratified_epoch) return "Ratified";
+  if (a.expired_epoch)  return "Expired";
+  if (a.dropped_epoch)  return "Dropped";
+  return "Open";
 }
 
-const RISK_COLOR = (score) =>
-  score >= 70 ? "#68d391" : score >= 45 ? "#fbd38d" : "#fc8181";
-
 export default function ActionList({ actions, state, tab, selected, onSelect }) {
-  // Uma lista vazia por API fora do ar e uma lista vazia por não haver
-  // propostas são situações diferentes, e antes as duas apareciam iguais.
   if (state === "loading") {
-    return <div className="action-list-empty">Loading…</div>;
+    return <p className="index-note">Loading index…</p>;
   }
   if (state === "offline") {
-    return <div className="action-list-empty">API unavailable</div>;
+    return <p className="index-note">Index unavailable. Reload in a moment.</p>;
   }
   if (!actions.length) {
     return (
-      <div className="action-list-empty">
-        {tab === "history"
-          ? "No analyses published yet"
-          : "No governance actions on-chain"}
-      </div>
+      <p className="index-note">
+        {tab === "analysed"
+          ? "No analyses published yet."
+          : "No governance actions on chain."}
+      </p>
     );
   }
 
   return (
-    <div className="action-list">
+    <ol className="index-list">
       {actions.map((a) => {
-        const id      = a.gov_action_id;
-        const dot     = statusDot(a);
-        const color   = TYPE_COLORS[a.action_type] || "#e2e8f0";
+        const id = a.gov_action_id;
         const isActive = selected === id;
+        const score = a.risk_score;
 
         return (
-          <button
-            key={id}
-            className={`action-item ${isActive ? "active" : ""}`}
-            onClick={() => onSelect(id)}
-          >
-            <div className="action-header">
-              <span className="action-type" style={{ color }}>{a.action_type}</span>
-              {a.risk_score != null ? (
-                <span className="action-status" style={{ color: RISK_COLOR(a.risk_score) }}>
-                  {a.risk_score}/100
+          <li key={id}>
+            <button
+              className={isActive ? "entry is-active" : "entry"}
+              onClick={() => onSelect(id)}
+              aria-current={isActive ? "true" : undefined}
+            >
+              <span className="entry-meta">
+                <span className="entry-type">{TYPE_LABEL[a.action_type] || a.action_type}</span>
+                <span className="entry-status">{status(a)}</span>
+              </span>
+
+              <span className="entry-title">
+                {a.title || a.one_liner || `${id.slice(0, 18)}…`}
+              </span>
+
+              {score != null && (
+                <span className={`entry-score tone-${riskTone(score)}`}>
+                  <span className="entry-score-num">{score}</span>
+                  <span className="entry-score-unit">/100</span>
                 </span>
-              ) : (
-                <span className="action-status" style={{ color: dot.color }}>● {dot.label}</span>
               )}
-            </div>
-            <div className="action-title">
-              {a.title || a.one_liner || id.slice(0, 20) + "..."}
-            </div>
-            {a.completeness_score != null && (
-              <div className="action-score">
-                <div
-                  className="score-bar"
-                  style={{ width: `${a.completeness_score}%` }}
-                />
-                <span>{a.completeness_score}/100</span>
-              </div>
-            )}
-            <div className="action-id">{id.slice(0, 16)}…</div>
-          </button>
+            </button>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
