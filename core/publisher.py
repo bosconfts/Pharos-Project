@@ -98,14 +98,40 @@ def run(limit: int = 5, dry_run: bool = True) -> dict:
             result = publish_on_chain(doc, doc_hash)
 
             if result.get("status") == "submitted":
-                set_on_chain_result(gid, "submitted", result["tx_hash"])
+                # A partir daqui a transação já foi paga. Registrar o tx_hash
+                # é o que impede uma segunda publicação da mesma action, então
+                # uma falha aqui NÃO pode ser engolida pelo except abaixo:
+                # ficaria uma tx paga e invisível, elegível para ser paga de
+                # novo. Aborta ruidosamente, com o hash à vista para registro
+                # manual.
+                tx = result.get("tx_hash")
+                try:
+                    if not tx:
+                        raise RuntimeError("submit retornou sem tx_hash")
+                    set_on_chain_result(gid, "submitted", tx)
+                except Exception as e:
+                    print("\n" + "!" * 68)
+                    print("ATENCAO: transacao submetida mas NAO registrada no banco.")
+                    print(f"  gov_action_id: {gid}")
+                    print(f"  tx_hash      : {tx}")
+                    print(f"  causa        : {e}")
+                    print("Registre manualmente antes de rodar o publisher de novo,")
+                    print("ou esta action sera publicada e paga uma segunda vez:")
+                    print(f"  UPDATE governance_actions SET on_chain_status='submitted',")
+                    print(f"    on_chain_tx='{tx}', on_chain_at=NOW()")
+                    print(f"    WHERE gov_action_id='{gid}';")
+                    print("!" * 68 + "\n")
+                    raise SystemExit(2)
+
                 stats["submitted"] += 1
-                print(f"   ✅ tx {result['tx_hash']}")
+                print(f"   ✅ tx {tx}")
             else:
                 set_on_chain_result(gid, result.get("status", "error"))
                 stats["failed"] += 1
                 print(f"   ❌ {result.get('status')}: {result.get('reason')}")
 
+        # SystemExit herda de BaseException, então o abort acima passa por aqui
+        # sem ser capturado — que é exatamente a intenção.
         except Exception as e:
             stats["failed"] += 1
             print(f"   ❌ {gid[:24]}… erro inesperado: {e}")
