@@ -18,8 +18,10 @@ novos do Pharos são criados nele, para não depender do email pessoal.
 | **Vercel** | `joaobosco.ada@gmail.com` | Hospedagem da API read-only (plano Hobby) |
 | ~~Hugging Face Spaces~~ | `joaobosco.ada@gmail.com` | **Não usado.** Docker Spaces viraram PRO-only; o free tier só serve arquivos estáticos. |
 | **GitHub** | `bosconfts@gmail.com` (user `bosconfts`) | Repo público `bosconfts/Pharos-Project`, Pages (`pharosgov.io`) **e execução do worker via Actions** |
-| Blockfrost | `bosconfts@gmail.com` | `BLOCKFROST_PROJECT_ID` (mainnet) |
+| **Blockfrost** | `bosconfts@gmail.com` | `BLOCKFROST_PROJECT_ID` (mainnet). **A única fonte de dados da chain** — sem ele não há o que indexar, o M3 não roda e nada é publicado. Quando o token expirou, o projeto parou inteiro. |
 | Render | — | **Abandonado.** Login quebrado, sem acesso. Não é mais o orquestrador. |
+| Neo4j Aura | — | **Nunca provisionado.** O `step9_wallet_graph.py` existe e o M3 tenta usá-lo, mas cai no caminho via Blockfrost quando ausente — que é como roda hoje. |
+| Registrador de `pharosgov.io` | — | Não registrado aqui; o domínio aponta para o GitHub Pages. |
 
 Padrão que se repete: o login dos serviços é `joaobosco.ada`, mas o repositório
 é do GitHub `bosconfts`. As duas identidades convivem — o serviço pede
@@ -34,7 +36,7 @@ emails coincidam.
 | Postgres 18 + pgvector | Neon | Free tier |
 | API read-only | Vercel (Python serverless) | Hobby, grátis |
 | Dashboard | GitHub Pages | Grátis |
-| Neo4j (opcional) | Aura Free | M3 funciona sem ele |
+| Neo4j (opcional) | Aura Free — **não criado** | M3 roda sem ele, via Blockfrost |
 
 Isso só é viável porque a API ficou read-only e não carrega mais `torch`. Todo
 o peso está no worker, que é um job em lote — e job em lote é o que o Actions
@@ -54,14 +56,34 @@ a Vercel instala, e torch não caberia no limite de tamanho de função);
 A chave Anthropic anterior, criada na conta pessoal, foi exposta e **deve ser
 revogada**. Toda chave nova do projeto sai da conta Anthropic acima.
 
-Autenticação Anthropic: **API key estática**, não identity federation — o worker
-roda como cron Docker no Render, que não é um provedor de identidade suportado
-(a federação cobre GCP, AWS, Azure e GitHub Actions). Reavaliar se o worker
-algum dia migrar para GitHub Actions.
+Autenticação Anthropic: **API key estática**. Vale reavaliar — o worker migrou
+para o GitHub Actions, que É um provedor de identidade suportado pela federação
+(junto de GCP, AWS e Azure). Trocar eliminaria o segredo estático de vez, o que
+importa aqui: a chave anterior já vazou uma vez.
 
-Segredos vivem apenas no `.env` (gitignorado) e nas variáveis de ambiente do
-Render. Nunca commitar chaves, e nunca colocar a signing key da carteira no
-serviço web.
+Onde cada segredo vive:
+
+| Segredo | `.env` local | GitHub Secrets (worker) | Vercel (API) |
+|---|---|---|---|
+| `DATABASE_URL` | direta | direta | **pooled** |
+| `BLOCKFROST_PROJECT_ID` | sim | sim | sim |
+| `ANTHROPIC_API_KEY` | sim | sim | **não** — a API não chama o Claude |
+| `PIL_WALLET_ADDRESS` / `PIL_SIGNING_KEY_PATH` | sim | **não** | **não** |
+
+Nunca commitar chaves, e nunca dar a signing key da carteira a nada que a
+internet alcance. O publisher roda apenas na máquina local.
+
+## Stack
+
+**Backend:** Python 3.12 · FastAPI · psycopg2 · httpx · sentence-transformers +
+torch (embeddings do M2, só no worker) · pycardano (assinatura, só no publisher).
+**Frontend:** React 18 · Vite — e nada além disso. O `recharts` foi removido no
+redesign; o bundle caiu de 517 KB para 156 KB. Não reintroduzir biblioteca de
+gráfico sem necessidade real.
+**Dados:** PostgreSQL 18 + pgvector. **Local:** Docker Compose.
+
+Links externos sem conta: `cardanoscan.io` (verificação de transação pelo
+usuário) e `ipfs.io` (gateway para documentos de propostas ancorados em IPFS).
 
 ## Arquitetura de execução
 
