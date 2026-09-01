@@ -1,15 +1,11 @@
-pycardano>=0.11.0
-blockfrost-python>=0.5.3
-httpx==0.27.0
-python-dotenv==1.0.1
+# Dependências da API read-only (core/step5_api.py).
+#
+# Mantido enxuto de propósito: é este arquivo que a Vercel instala, e o limite
+# de tamanho de função não comporta torch. A API não roda o pipeline, não gera
+# embeddings e não assina transações — o worker é que faz isso, e as
+# dependências dele estão em requirements-worker.txt.
 fastapi==0.115.0
 uvicorn==0.30.6
-anthropic==0.34.2
-# M2
+httpx==0.27.0
+python-dotenv==1.0.1
 psycopg2-binary
-pgvector==0.3.2
-sentence-transformers==3.0.1
-# torch CPU-only (instalado separadamente no Dockerfile via --index-url)
-torch>=2.9.0
-# M3/M4
-neo4j>=5.0.0

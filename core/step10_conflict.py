@@ -73,9 +73,15 @@ def _tx_output_addrs(client, tx_hash: str) -> set[str]:
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
-def detect_conflicts(gov_action_id: str, tx_hash: str, cert_index: int, action_type: str) -> dict:
+def detect_conflicts(gov_action_id: str, tx_hash: str, cert_index: int, action_type: str,
+                     anchor_text: str = "") -> dict:
     """
     Run M3 conflict detection for a governance action.
+
+    anchor_text: texto do documento âncora, usado para verificar se uma relação
+    detectada já foi declarada pelo próprio proponente. Declarado é
+    transparência; não declarado é o que interessa.
+
     Returns a dict with conflicts list and metadata.
     """
     result = {
@@ -134,21 +140,38 @@ def detect_conflicts(gov_action_id: str, tx_hash: str, cert_index: int, action_t
         conflicts: list[dict] = []
 
         # ── Check A: Proposer IS a beneficiary (same stake key) ───────────────
+        # Classificado como INFO, não como conflito. Numa retirada de tesouraria
+        # o normal é que quem propõe receba os fundos — organizações submetem
+        # propostas para financiar a si mesmas, e isso é o desenho do processo,
+        # não um desvio. Marcar como HIGH dispararia em quase toda withdrawal e
+        # zeraria 20 pontos do score em todas elas, tornando o sinal inútil.
+        # O que de fato indica conflito é relacionamento financeiro *não
+        # declarado* com terceiros beneficiários — isso é o Check B.
         for p_stake in proposer_stakes:
             if p_stake in beneficiary_stakes:
+                declared = bool(anchor_text) and p_stake in anchor_text
                 conflicts.append({
-                    "severity":         "HIGH",
+                    "severity":         "INFO",
                     "type":             "self_beneficiary",
-                    "description":      f"Proposer stake address is a direct beneficiary of this withdrawal",
+                    "description":      "Proposer stake address is a direct beneficiary of this withdrawal",
+                    "note":             "Structural for treasury withdrawals — disclosure, not a finding.",
+                    "declared_in_anchor": declared,
                     "proposer_stake":   p_stake,
                     "beneficiary_stake": p_stake,
                     "evidence_txhash":  tx_hash,
                 })
 
         # ── Check B: Direct transactions between proposer and beneficiaries ───
+        # A própria submissão da proposta é uma transação compartilhada entre
+        # proponente e beneficiário. Contá-la seria circular: apresentaria a
+        # proposta como prova de relacionamento financeiro *prévio*, e
+        # duplicaria o achado do Check A como um segundo conflito HIGH.
+        # Evidência precisa ser anterior e independente da proposta.
+        excluded_txs = {tx_hash}
+
         if len(conflicts) < 5:
             for p_addr in proposer_addrs[:2]:
-                p_txs = _addr_txs(client, p_addr, count=40)
+                p_txs = _addr_txs(client, p_addr, count=40) - excluded_txs
                 time.sleep(0.15)
 
                 for b_stake in beneficiary_stakes[:4]:
@@ -156,7 +179,7 @@ def detect_conflicts(gov_action_id: str, tx_hash: str, cert_index: int, action_t
                     time.sleep(0.15)
 
                     for b_addr in b_addrs[:3]:
-                        b_txs = _addr_txs(client, b_addr, count=40)
+                        b_txs = _addr_txs(client, b_addr, count=40) - excluded_txs
                         time.sleep(0.15)
 
                         shared = p_txs & b_txs

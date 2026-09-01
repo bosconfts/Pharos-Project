@@ -1,21 +1,31 @@
+# Deploy opcional da API no Render.
+#
+# O worker NÃO vive aqui: ele roda no GitHub Actions
+# (.github/workflows/worker.yml), que é gratuito para repositórios públicos.
+# Dois orquestradores escrevendo nas mesmas linhas do banco causariam
+# corrida — mantenha apenas um.
+#
+# O publisher também não é declarado: ele é o único componente que carrega a
+# signing key da carteira mainnet e roda em ambiente controlado, nunca em CI
+# nem em serviço exposto à rede.
+#
+# DATABASE_URL aponta para um Postgres externo (Neon) — o mesmo que o worker
+# usa. A API é read-only e só precisa de leitura.
+
 services:
   - type: web
     name: pharos-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
+    healthCheckPath: /health
     envVars:
       - key: BLOCKFROST_PROJECT_ID
         sync: false
       - key: BLOCKFROST_BASE_URL
         value: https://cardano-mainnet.blockfrost.io/api/v0
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: DATABASE_URL
         sync: false
-      - key: NEO4J_URI
-        sync: false
-      - key: NEO4J_USER
-        sync: false
-      - key: NEO4J_PASSWORD
-        sync: false
+      # A API nunca publica on-chain e nunca recebe a signing key.
+      - key: PIL_ENABLE_ONCHAIN
+        value: "false"

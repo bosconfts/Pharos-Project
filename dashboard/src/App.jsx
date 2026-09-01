@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
-import { fetchStats, fetchHistory, fetchLive, fetchAnalysis } from "./api";
+import { fetchStats, fetchHistory, fetchLive, fetchAnalysis, ApiError } from "./api";
 import ActionList from "./components/ActionList";
 import ActionDetail from "./components/ActionDetail";
 import StatsBar from "./components/StatsBar";
 import "./App.css";
 
 export default function App() {
-  const [stats, setStats]         = useState(null);
-  const [actions, setActions]     = useState([]);
-  const [selected, setSelected]   = useState(null);
-  const [analysis, setAnalysis]   = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [tab, setTab]             = useState("history"); // "history" | "live"
+  const [stats, setStats]       = useState(null);
+  const [actions, setActions]   = useState([]);
+  const [listState, setList]    = useState("loading"); // loading | ok | offline
+  const [selected, setSelected] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
+  const [detail, setDetail]     = useState("idle"); // idle | loading | ok | pending | offline
+  const [tab, setTab]           = useState("history");
 
   useEffect(() => {
-    fetchStats().then(setStats).catch(() => {});
+    fetchStats().then(setStats).catch(() => setStats(null));
     loadActions("history");
   }, []);
 
@@ -22,26 +23,28 @@ export default function App() {
     setTab(mode);
     setSelected(null);
     setAnalysis(null);
-    if (mode === "history") {
-      const data = await fetchHistory(50).catch(() => ({ actions: [] }));
+    setDetail("idle");
+    setList("loading");
+    try {
+      const data = mode === "history" ? await fetchHistory(50) : await fetchLive(20);
       setActions(data.actions || []);
-    } else {
-      const data = await fetchLive(20).catch(() => ({ actions: [] }));
-      setActions(data.actions || []);
+      setList("ok");
+    } catch {
+      setActions([]);
+      setList("offline");
     }
   }
 
   async function selectAction(id) {
     setSelected(id);
     setAnalysis(null);
-    setLoading(true);
+    setDetail("loading");
     try {
-      const data = await fetchAnalysis(id);
-      setAnalysis(data);
+      setAnalysis(await fetchAnalysis(id));
+      setDetail("ok");
     } catch (e) {
-      setAnalysis({ error: String(e) });
-    } finally {
-      setLoading(false);
+      // 404 é o caso normal para uma action que o worker ainda não alcançou.
+      setDetail(e instanceof ApiError && e.status === 404 ? "pending" : "offline");
     }
   }
 
@@ -55,9 +58,7 @@ export default function App() {
           </div>
           <div className="header-meta">
             <span className="network-badge">mainnet</span>
-            {stats && (
-              <span className="stat-badge">{stats.total_analyzed} analyzed</span>
-            )}
+            {stats && <span className="stat-badge">{stats.total_analyzed} analyzed</span>}
           </div>
         </div>
       </header>
@@ -67,37 +68,53 @@ export default function App() {
       <main className="main">
         <section className="sidebar">
           <div className="tab-bar">
-            <button
-              className={tab === "history" ? "tab active" : "tab"}
-              onClick={() => loadActions("history")}
-            >
+            <button className={tab === "history" ? "tab active" : "tab"}
+                    onClick={() => loadActions("history")}>
               PIL History
             </button>
-            <button
-              className={tab === "live" ? "tab active" : "tab"}
-              onClick={() => loadActions("live")}
-            >
+            <button className={tab === "live" ? "tab active" : "tab"}
+                    onClick={() => loadActions("live")}>
               Live
             </button>
           </div>
           <ActionList
             actions={actions}
+            state={listState}
+            tab={tab}
             selected={selected}
             onSelect={selectAction}
           />
         </section>
 
         <section className="detail">
-          {loading && (
+          {detail === "loading" && (
             <div className="loading">
               <div className="spinner" />
-              <p>Analyzing with Claude...</p>
+              <p>Loading analysis…</p>
             </div>
           )}
-          {!loading && analysis && (
-            <ActionDetail analysis={analysis} />
+
+          {detail === "pending" && (
+            <div className="empty">
+              <p className="empty-title">Analysis not available yet</p>
+              <p>
+                This governance action is on-chain but the PIL worker hasn’t
+                processed it yet. Analyses are generated in batches every few hours.
+              </p>
+              <code className="empty-id">{selected}</code>
+            </div>
           )}
-          {!loading && !analysis && (
+
+          {detail === "offline" && (
+            <div className="empty">
+              <p className="empty-title">Can’t reach the PIL API</p>
+              <p>The analysis service is unavailable. Please try again shortly.</p>
+            </div>
+          )}
+
+          {detail === "ok" && analysis && <ActionDetail analysis={analysis} />}
+
+          {detail === "idle" && (
             <div className="empty">
               <p>Select a governance action to view the PIL analysis</p>
             </div>

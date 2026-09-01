@@ -8,9 +8,21 @@ load_dotenv()
 
 PIL_VERSION = "1.0.0"
 BLOCKFROST_PROJECT_ID = os.getenv("BLOCKFROST_PROJECT_ID", "")
-BLOCKFROST_BASE_URL   = os.getenv("BLOCKFROST_BASE_URL", "https://cardano-preview.blockfrost.io/api/v0")
+BLOCKFROST_BASE_URL   = os.getenv("BLOCKFROST_BASE_URL", "https://cardano-mainnet.blockfrost.io/api/v0")
 PIL_SIGNING_KEY_PATH  = os.getenv("PIL_SIGNING_KEY_PATH", "wallet/payment.skey")
 PIL_WALLET_ADDRESS    = os.getenv("PIL_WALLET_ADDRESS", "")
+
+# Interruptor mestre. Sem ele nenhuma transação é submetida, em nenhum caminho
+# de código. O serviço web nunca deve tê-lo ligado.
+PIL_ENABLE_ONCHAIN    = os.getenv("PIL_ENABLE_ONCHAIN", "false").lower() == "true"
+
+
+def network_name() -> str:
+    """Deriva a rede da BLOCKFROST_BASE_URL — evita divergência entre leitura e escrita."""
+    for net in ("mainnet", "preprod", "preview"):
+        if net in BLOCKFROST_BASE_URL:
+            return net
+    return "unknown"
 
 
 def blake2b_256(data: bytes) -> str:
@@ -105,10 +117,15 @@ def compute_document_hash(doc: dict) -> str:
 
 def publish_on_chain(doc: dict, doc_hash: str) -> dict:
     """
-    Publica o hash do documento PIL on-chain na Preview Testnet
-    usando metadatum 1694 (CIP-100).
+    Publica o hash do documento PIL on-chain usando metadatum 1694 (CIP-100).
+
+    ATENÇÃO: gasta ADA real quando BLOCKFROST_BASE_URL aponta para mainnet.
+    Só deve ser chamada pelo publisher, nunca a partir de um request HTTP.
     Retorna {"tx_hash": "...", "status": "submitted"} ou {"status": "skipped", "reason": "..."}.
     """
+    if not PIL_ENABLE_ONCHAIN:
+        return {"status": "skipped", "reason": "PIL_ENABLE_ONCHAIN não está ligado"}
+
     if not PIL_SIGNING_KEY_PATH or not os.path.exists(PIL_SIGNING_KEY_PATH):
         return {"status": "skipped", "reason": "PIL_SIGNING_KEY_PATH não configurado ou arquivo não encontrado"}
 
@@ -130,9 +147,13 @@ def publish_on_chain(doc: dict, doc_hash: str) -> dict:
         )
 
         from blockfrost import ApiUrls
+        net = network_name()
+        if net == "unknown":
+            return {"status": "skipped", "reason": f"rede não reconhecida em BLOCKFROST_BASE_URL: {BLOCKFROST_BASE_URL}"}
+
         context = BlockFrostChainContext(
             project_id=BLOCKFROST_PROJECT_ID.strip(),
-            base_url=ApiUrls.mainnet.value,
+            base_url=getattr(ApiUrls, net).value,
         )
 
         skey    = PaymentSigningKey.load(PIL_SIGNING_KEY_PATH)

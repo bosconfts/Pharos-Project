@@ -47,6 +47,16 @@ Pharos operates as a four-module pipeline over every indexed governance action. 
 M1 Translation Engine → M2 Historical Cross-Ref → M3 Conflict of Interest → M4 Risk Score → IPFS + Chain
 ```
 
+The platform runs as three separate processes with distinct privileges:
+
+| Process | Entry point | Does | Holds signing key |
+|---|---|---|---|
+| **Worker** | `core/worker.py` | Indexes actions, runs M1–M4, persists to Postgres | No |
+| **Publisher** | `core/publisher.py` | Anchors PIL documents on-chain (metadatum 1694) | **Yes** |
+| **API** | `core/step5_api.py` | Serves persisted analyses, read-only | No |
+
+Separating these matters: analysis is expensive and batched, anchoring spends real ADA, and serving must be fast and stateless. No HTTP request can trigger a transaction.
+
 ### M1 — Translation Engine
 
 For every governance action indexed on-chain, the system fetches the anchor metadata (URL + hash CIP-100/108), validates content integrity against the published blake2b-256 hash, and runs a three-layer analysis pipeline:
@@ -228,15 +238,17 @@ pip install -r requirements.txt
 python core/database.py
 ```
 
-### 5. Run the pipeline (CLI)
+### 5. Run the analysis worker
 
-Processes the most recent governance action with an anchor document:
+The worker indexes governance actions, runs M1–M4, and persists everything to Postgres. It never signs transactions.
 
 ```bash
-python run_m1.py
+python core/worker.py --init-db --count 50
 ```
 
 ### 6. Start the API
+
+The API is strictly read-only — it serves what the worker wrote and runs no pipeline.
 
 ```bash
 python core/step5_api.py
@@ -244,7 +256,18 @@ python core/step5_api.py
 # Interactive docs at http://localhost:8000/docs
 ```
 
-### 7. Start the dashboard
+### 7. Publish analyses on-chain (optional)
+
+The publisher is the only component that holds the wallet signing key. It runs separately from the API and requires two independent consents: `PIL_ENABLE_ONCHAIN=true` in the environment **and** the `--publish` flag.
+
+```bash
+python core/publisher.py             # dry-run — lists what would be published
+python core/publisher.py --publish   # submits (spends real ADA on mainnet)
+```
+
+Publishing is idempotent: an action with a recorded `on_chain_tx` is never re-anchored.
+
+### 8. Start the dashboard
 
 ```bash
 cd dashboard
@@ -264,7 +287,7 @@ npm run dev
 | GET | `/stats` | Total proposals analyzed |
 | GET | `/governance/actions` | Live governance actions from Blockfrost |
 | GET | `/governance/history` | Analyzed proposals from database |
-| GET | `/analysis/{gov_action_id}` | Full analysis: anchor validation, summaries, PIL document hash, similarity matches, conflict detection, and risk score |
+| GET | `/analysis/{gov_action_id}` | Full analysis: anchor validation, summaries, PIL document hash, similarity matches, conflict detection, risk score, and on-chain anchor status. Returns 404 until the worker has processed the action |
 
 ---
 

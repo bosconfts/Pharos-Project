@@ -81,13 +81,18 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
     high = sum(1 for c in conflicts if c.get("severity") == "HIGH")
     med  = sum(1 for c in conflicts if c.get("severity") == "MEDIUM")
     low  = sum(1 for c in conflicts if c.get("severity") == "LOW")
+    # INFO não é achado: é divulgação (ex.: proponente é beneficiário declarado,
+    # que é o desenho normal de uma retirada de tesouraria). Aparece no output
+    # para o DRep ver, mas não tira pontos.
+    info = sum(1 for c in conflicts if c.get("severity") == "INFO")
 
     if action_type != "TreasuryWithdrawals":
         c3    = 20
         c3_ev = "Not applicable (no direct financial beneficiaries)"
-    elif not conflicts:
+    elif not (high or med or low):
         c3    = 20
-        c3_ev = "No financial conflicts detected"
+        c3_ev = (f"No financial conflicts detected ({info} disclosure(s) noted)"
+                 if info else "No financial conflicts detected")
     elif high > 0:
         c3    = 0
         c3_ev = f"{high} HIGH severity conflict(s) detected"

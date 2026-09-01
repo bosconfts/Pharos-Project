@@ -74,6 +74,13 @@ def init_db():
         "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS conflict_data      JSONB",
         "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS risk_score         INTEGER",
         "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS risk_components    JSONB",
+        # Análise completa servida pela API read-only + estado de publicação on-chain
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS analysis           JSONB",
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS pil_document       JSONB",
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS similarity_data    JSONB",
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS analyzed_at        TIMESTAMPTZ",
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS on_chain_status     TEXT",
+        "ALTER TABLE governance_actions ADD COLUMN IF NOT EXISTS on_chain_at        TIMESTAMPTZ",
     ]:
         cur.execute(col_sql)
 
@@ -184,6 +191,111 @@ def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: 
     conn.close()
 
 
+def save_analysis(gov_action_id: str, analysis: dict, pil_document: dict | None = None,
+                  similarity_data: dict | None = None):
+    """Persiste o resultado completo do pipeline. A API lê exclusivamente daqui."""
+    import json
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        UPDATE governance_actions
+        SET analysis        = %s,
+            pil_document    = COALESCE(%s, pil_document),
+            similarity_data = COALESCE(%s, similarity_data),
+            analyzed_at     = NOW()
+        WHERE gov_action_id = %s
+    """, (
+        json.dumps(analysis, default=str),
+        json.dumps(pil_document, default=str) if pil_document is not None else None,
+        json.dumps(similarity_data, default=str) if similarity_data is not None else None,
+        gov_action_id,
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_analysis(gov_action_id: str) -> dict | None:
+    """Retorna a análise persistida, ou None se a action ainda não foi processada."""
+    conn = get_conn()
+    cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT analysis, pil_document, on_chain_tx, on_chain_status, analyzed_at
+        FROM governance_actions
+        WHERE gov_action_id = %s
+    """, (gov_action_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row or not row["analysis"]:
+        return None
+
+    result = dict(row["analysis"])
+    result["pil_document"] = row["pil_document"]
+    result["on_chain"] = {
+        "status":  row["on_chain_status"] or "not_published",
+        "tx_hash": row["on_chain_tx"],
+    }
+    result["analyzed_at"] = row["analyzed_at"].isoformat() if row["analyzed_at"] else None
+    return result
+
+
+def set_on_chain_result(gov_action_id: str, status: str, tx_hash: str | None = None):
+    """Registra o resultado da publicação on-chain (chamado apenas pelo publisher)."""
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        UPDATE governance_actions
+        SET on_chain_status = %s,
+            on_chain_tx     = COALESCE(%s, on_chain_tx),
+            on_chain_at     = CASE WHEN %s IS NOT NULL THEN NOW() ELSE on_chain_at END
+        WHERE gov_action_id = %s
+    """, (status, tx_hash, tx_hash, gov_action_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_pending_publish(limit: int = 10) -> list[dict]:
+    """Actions já analisadas que ainda não têm transação on-chain confirmada.
+
+    A ausência de on_chain_tx é a garantia de idempotência: uma action publicada
+    nunca é reprocessada, mesmo que o worker rode várias vezes.
+    """
+    conn = get_conn()
+    cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT gov_action_id, pil_document, pil_doc_hash
+        FROM governance_actions
+        WHERE analysis IS NOT NULL
+          AND pil_document IS NOT NULL
+          AND on_chain_tx IS NULL
+        ORDER BY analyzed_at ASC
+        LIMIT %s
+    """, (limit,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_unanalyzed_ids(limit: int = 100) -> list[str]:
+    """IDs de actions indexadas mas ainda sem análise."""
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT gov_action_id FROM governance_actions
+        WHERE analysis IS NULL
+        ORDER BY processed_at DESC
+        LIMIT %s
+    """, (limit,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [r[0] for r in rows]
+
+
 def count_actions() -> int:
     conn = get_conn()
     cur  = conn.cursor()
@@ -195,4 +307,9 @@ def count_actions() -> int:
 
 
 if __name__ == "__main__":
+    # O console do Windows usa cp1252 e estoura em emoji. Sem isso, um print
+    # decorativo derruba o script depois do trabalho já ter sido feito.
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     init_db()

@@ -1,0 +1,90 @@
+name: PIL Analysis Worker
+
+# Executa o pipeline M1–M4 e persiste no Postgres.
+# Este workflow NUNCA publica on-chain: PIL_ENABLE_ONCHAIN fica em "false" e a
+# signing key da carteira não existe neste ambiente. A ancoragem é feita
+# manualmente via `python core/publisher.py --publish`.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Quantas governance actions indexar"
+        required: false
+        default: "50"
+      reprocess:
+        description: "Reprocessar actions já analisadas"
+        type: boolean
+        required: false
+        default: false
+      gov_action_id:
+        description: "Processar apenas esta gov_action_id (opcional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# Duas execuções simultâneas escreveriam nas mesmas linhas do banco.
+# Sem cancel-in-progress: uma análise em andamento deve terminar.
+concurrency:
+  group: pil-worker
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-worker.txt
+
+      # O modelo de embeddings (all-MiniLM-L6-v2, ~90MB) é baixado no primeiro
+      # uso. Sem cache, cada execução paga esse download.
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2-v1
+
+      - name: Run worker
+        env:
+          BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+          BLOCKFROST_BASE_URL: https://cardano-mainnet.blockfrost.io/api/v0
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          PIL_ENABLE_ONCHAIN: "false"
+          # Inputs passam por env, nunca interpolados no shell: `${{ }}` direto
+          # em `run` permitiria injeção de comando via valor do input.
+          INPUT_ID: ${{ inputs.gov_action_id }}
+          INPUT_COUNT: ${{ inputs.count }}
+          INPUT_REPROCESS: ${{ inputs.reprocess }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_ID:-}" ]; then
+            python core/worker.py --init-db --id "$INPUT_ID"
+          else
+            ARGS=(--init-db --count "${INPUT_COUNT:-50}")
+            # `[ ... ] && ARGS+=(...)` aqui abortaria o job sob `set -e`
+            # sempre que a condição fosse falsa.
+            if [ "${INPUT_REPROCESS:-false}" = "true" ]; then
+              ARGS+=(--all)
+            fi
+            python core/worker.py "${ARGS[@]}"
+          fi

@@ -33,6 +33,12 @@ class GovernanceAction:
     anchor_hash:    Optional[str]
     deposit:        int
     epoch_expiry:   Optional[int]
+    # Status on-chain — sem estes campos o delivery rate (M2) e os componentes
+    # 1 e 6 do risk score (M4) não têm como distinguir aprovada de pendente.
+    ratified_epoch: Optional[int] = None
+    enacted_epoch:  Optional[int] = None
+    expired_epoch:  Optional[int] = None
+    dropped_epoch:  Optional[int] = None
     json_metadata:  Optional[dict] = None
     raw:            dict = field(default_factory=dict)
 
@@ -86,6 +92,10 @@ def fetch_governance_actions(page: int = 1, count: int = 20) -> list[GovernanceA
                 anchor_hash=meta.get("hash"),
                 deposit=int(detail.get("deposit", 0)),
                 epoch_expiry=detail.get("expiration"),
+                ratified_epoch=detail.get("ratified_epoch"),
+                enacted_epoch=detail.get("enacted_epoch"),
+                expired_epoch=detail.get("expired_epoch"),
+                dropped_epoch=detail.get("dropped_epoch"),
                 json_metadata=meta.get("json_metadata"),
                 raw=item,
             )
