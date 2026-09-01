@@ -34,7 +34,7 @@ export default function ActionDetail({ analysis }) {
         <p className="eyebrow">
           {TYPE_LABEL[analysis.action_type] || analysis.action_type}
         </p>
-        <h1 className="record-title">{title}</h1>
+        <h2 className="record-title">{title}</h2>
         {summaries.one_liner && summaries.one_liner !== title && (
           <p className="record-lede">{summaries.one_liner}</p>
         )}

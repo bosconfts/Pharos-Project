@@ -51,9 +51,8 @@ export default function App() {
       <header className="masthead">
         <div className="masthead-inner">
           <div className="brand">
-            <span className="brand-mark">Pharos</span>
-            <span className="brand-rule" aria-hidden="true" />
-            <span className="brand-sub">Proposal Intelligence Layer</span>
+            <h1 className="brand-mark">Pharos</h1>
+            <p className="brand-sub">Proposal Intelligence Layer</p>
           </div>
 
           <p className="masthead-lede">
