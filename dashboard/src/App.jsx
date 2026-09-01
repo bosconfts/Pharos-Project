@@ -2,21 +2,20 @@ import { useState, useEffect } from "react";
 import { fetchStats, fetchHistory, fetchLive, fetchAnalysis, ApiError } from "./api";
 import ActionList from "./components/ActionList";
 import ActionDetail from "./components/ActionDetail";
-import StatsBar from "./components/StatsBar";
 import "./App.css";
 
 export default function App() {
   const [stats, setStats]       = useState(null);
   const [actions, setActions]   = useState([]);
-  const [listState, setList]    = useState("loading"); // loading | ok | offline
+  const [listState, setList]    = useState("loading");
   const [selected, setSelected] = useState(null);
   const [analysis, setAnalysis] = useState(null);
-  const [detail, setDetail]     = useState("idle"); // idle | loading | ok | pending | offline
-  const [tab, setTab]           = useState("history");
+  const [detail, setDetail]     = useState("idle");
+  const [tab, setTab]           = useState("analysed");
 
   useEffect(() => {
     fetchStats().then(setStats).catch(() => setStats(null));
-    loadActions("history");
+    loadActions("analysed");
   }, []);
 
   async function loadActions(mode) {
@@ -26,7 +25,7 @@ export default function App() {
     setDetail("idle");
     setList("loading");
     try {
-      const data = mode === "history" ? await fetchHistory(50) : await fetchLive(20);
+      const data = mode === "analysed" ? await fetchHistory(50) : await fetchLive(20);
       setActions(data.actions || []);
       setList("ok");
     } catch {
@@ -43,39 +42,61 @@ export default function App() {
       setAnalysis(await fetchAnalysis(id));
       setDetail("ok");
     } catch (e) {
-      // 404 é o caso normal para uma action que o worker ainda não alcançou.
       setDetail(e instanceof ApiError && e.status === 404 ? "pending" : "offline");
     }
   }
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-inner">
-          <div className="logo">
-            <span className="logo-pill">PIL</span>
-            <span className="logo-text">Proposal Intelligence Layer</span>
+      <header className="masthead">
+        <div className="masthead-inner">
+          <div className="brand">
+            <span className="brand-mark">Pharos</span>
+            <span className="brand-rule" aria-hidden="true" />
+            <span className="brand-sub">Proposal Intelligence Layer</span>
           </div>
-          <div className="header-meta">
-            <span className="network-badge">mainnet</span>
-            {stats && <span className="stat-badge">{stats.total_analyzed} analyzed</span>}
-          </div>
+
+          <p className="masthead-lede">
+            Every governance action on Cardano, read closely: what it asks for, who
+            stands to receive it, and how it compares with the proposals that came
+            before. The analysis is public, reproducible, and anchored on-chain.
+          </p>
+
+          <dl className="masthead-meta">
+            <div>
+              <dt>Proposals analysed</dt>
+              <dd className="num">{stats ? stats.total_analyzed : "—"}</dd>
+            </div>
+            <div>
+              <dt>Network</dt>
+              <dd>{stats ? stats.network : "mainnet"}</dd>
+            </div>
+            <div>
+              <dt>Method</dt>
+              <dd>Open pipeline · anchored record</dd>
+            </div>
+          </dl>
         </div>
       </header>
 
-      {stats && <StatsBar stats={stats} />}
-
       <main className="main">
-        <section className="sidebar">
-          <div className="tab-bar">
-            <button className={tab === "history" ? "tab active" : "tab"}
-                    onClick={() => loadActions("history")}>
-              PIL History
-            </button>
-            <button className={tab === "live" ? "tab active" : "tab"}
-                    onClick={() => loadActions("live")}>
-              Live
-            </button>
+        <aside className="index-pane">
+          <div className="pane-head">
+            <h2>Index</h2>
+            <div className="tabs">
+              <button
+                className={tab === "analysed" ? "tab active" : "tab"}
+                onClick={() => loadActions("analysed")}
+              >
+                Analysed
+              </button>
+              <button
+                className={tab === "chain" ? "tab active" : "tab"}
+                onClick={() => loadActions("chain")}
+              >
+                On chain
+              </button>
+            </div>
           </div>
           <ActionList
             actions={actions}
@@ -84,39 +105,46 @@ export default function App() {
             selected={selected}
             onSelect={selectAction}
           />
-        </section>
+        </aside>
 
-        <section className="detail">
+        <section className="record-pane">
           {detail === "loading" && (
             <div className="loading">
-              <div className="spinner" />
-              <p>Loading analysis…</p>
+              <span className="loading-bar" aria-hidden="true" />
+              <span>Retrieving record</span>
             </div>
           )}
 
           {detail === "pending" && (
-            <div className="empty">
-              <p className="empty-title">Analysis not available yet</p>
+            <div className="state">
+              <h2 className="state-title">Not analysed yet</h2>
               <p>
-                This governance action is on-chain but the PIL worker hasn’t
-                processed it yet. Analyses are generated in batches every few hours.
+                This action is on chain, but the analysis pipeline hasn’t reached it.
+                Records are produced in batches every few hours — check back shortly.
               </p>
-              <code className="empty-id">{selected}</code>
+              <span className="mono">{selected}</span>
             </div>
           )}
 
           {detail === "offline" && (
-            <div className="empty">
-              <p className="empty-title">Can’t reach the PIL API</p>
-              <p>The analysis service is unavailable. Please try again shortly.</p>
+            <div className="state">
+              <h2 className="state-title">The record service is unreachable</h2>
+              <p>
+                Analyses are served from a public API that isn’t responding right now.
+                Reload in a moment; nothing on your side needs fixing.
+              </p>
             </div>
           )}
 
           {detail === "ok" && analysis && <ActionDetail analysis={analysis} />}
 
           {detail === "idle" && (
-            <div className="empty">
-              <p>Select a governance action to view the PIL analysis</p>
+            <div className="state">
+              <h2 className="state-title">Choose a proposal</h2>
+              <p>
+                Select an entry from the index to read its analysis — a plain-language
+                summary first, then the evidence behind the score.
+              </p>
             </div>
           )}
         </section>

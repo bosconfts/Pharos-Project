@@ -1,184 +1,172 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import RiskScoreGauge from "./RiskScoreGauge";
-import ConflictPanel  from "./ConflictPanel";
+import ConflictPanel from "./ConflictPanel";
 import "./ActionDetail.css";
 
-const STATUS_COLORS = {
-  enacted:  "#68d391",
-  ratified: "#90cdf4",
-  expired:  "#fc8181",
-  dropped:  "#718096",
-  active:   "#fbd38d",
-};
-
-const RISK_COLORS = {
-  "LOW RISK":    "#68d391",
-  "MEDIUM RISK": "#fbd38d",
-  "HIGH RISK":   "#fc8181",
+const TYPE_LABEL = {
+  InfoAction:          "Info action",
+  TreasuryWithdrawals: "Treasury withdrawal",
+  ParameterChange:     "Parameter change",
+  HardForkInitiation:  "Hard fork",
+  NoConfidence:        "No confidence",
+  NewConstitution:     "Constitution",
+  NewCommittee:        "Committee",
+  UpdateCommittee:     "Committee update",
 };
 
 export default function ActionDetail({ analysis }) {
-  if (analysis.error) {
-    return <div className="detail-error">Error: {analysis.error}</div>;
-  }
-
-  const summaries = analysis.summaries  || {};
+  const summaries = analysis.summaries || {};
   const sim       = analysis.similarity;
   const dr        = sim?.delivery_rate;
   const similar   = sim?.similar_proposals || [];
   const onChain   = analysis.on_chain;
   const risk      = analysis.risk_score;
-  const conflict  = analysis.conflict;
+  const full      = summaries.full || {};
 
-  const pieData = dr && dr.total > 0 ? [
-    { name: "Approved", value: dr.delivered, color: "#68d391" },
-    { name: "Expired",  value: dr.expired,   color: "#fc8181" },
-    { name: "Pending",  value: dr.pending,   color: "#fbd38d" },
-  ].filter(d => d.value > 0) : [];
+  const title =
+    analysis.cip108_title ||
+    analysis.pil_document?.title?.replace("PIL Analysis — ", "") ||
+    analysis.gov_action_id;
 
   return (
-    <div className="detail-wrap">
+    <article className="record">
+      {/* Abertura: o que é, em linguagem simples, antes de qualquer número. */}
+      <header className="record-head">
+        <p className="eyebrow">
+          {TYPE_LABEL[analysis.action_type] || analysis.action_type}
+        </p>
+        <h1 className="record-title">{title}</h1>
+        {summaries.one_liner && summaries.one_liner !== title && (
+          <p className="record-lede">{summaries.one_liner}</p>
+        )}
+      </header>
 
-      {/* Header */}
-      <div className="detail-card">
-        <div className="detail-header-row">
-          <div className="detail-type">{analysis.action_type}</div>
-          {risk && (
-            <div className="risk-badge" style={{ color: RISK_COLORS[risk.level] || "#a0aec0" }}>
-              {risk.total}/100 · {risk.level}
+      {risk && <RiskScoreGauge riskScore={risk} />}
+
+      <div className="record-grid">
+        {analysis.conflict && <ConflictPanel conflict={analysis.conflict} />}
+
+        {dr && (
+          <section className="panel">
+            <h3 className="eyebrow">What happened before</h3>
+            {dr.total > 0 ? (
+              <>
+                <p className="precedent-figure">
+                  <span className="precedent-num">{dr.total}</span>
+                  <span className="precedent-label">
+                    comparable {dr.total === 1 ? "proposal" : "proposals"} on record
+                  </span>
+                </p>
+                <div className="precedent-bar" aria-hidden="true">
+                  {dr.delivered > 0 && (
+                    <span className="seg seg-approved" style={{ flex: dr.delivered }} />
+                  )}
+                  {dr.expired > 0 && (
+                    <span className="seg seg-expired" style={{ flex: dr.expired }} />
+                  )}
+                  {dr.pending > 0 && (
+                    <span className="seg seg-pending" style={{ flex: dr.pending }} />
+                  )}
+                </div>
+                <ul className="precedent-key">
+                  {dr.delivered > 0 && <li><i className="k k-approved" />{dr.delivered} approved</li>}
+                  {dr.expired  > 0 && <li><i className="k k-expired" />{dr.expired} expired</li>}
+                  {dr.pending  > 0 && <li><i className="k k-pending" />{dr.pending} still open</li>}
+                </ul>
+              </>
+            ) : (
+              <p className="panel-quiet">
+                Nothing comparable in the record yet. As more proposals are analysed,
+                this section fills in.
+              </p>
+            )}
+          </section>
+        )}
+      </div>
+
+      {summaries.technical && (
+        <section className="panel">
+          <h3 className="eyebrow">In detail</h3>
+          <p className="prose">{summaries.technical}</p>
+        </section>
+      )}
+
+      {Object.keys(full).length > 0 && (
+        <section className="panel">
+          <h3 className="eyebrow">Full analysis</h3>
+          <dl className="full">
+            {Object.entries(full).map(([k, v]) =>
+              v ? (
+                <div key={k} className="full-item">
+                  <dt>{k.replace(/_/g, " ")}</dt>
+                  <dd>{typeof v === "string" ? v : JSON.stringify(v)}</dd>
+                </div>
+              ) : null
+            )}
+          </dl>
+        </section>
+      )}
+
+      {similar.length > 0 && (
+        <section className="panel">
+          <h3 className="eyebrow">Comparable proposals</h3>
+          <ul className="similar">
+            {similar.map((p) => (
+              <li key={p.gov_action_id} className="similar-item">
+                <span className="similar-title">
+                  {p.title || p.one_liner || `${p.gov_action_id.slice(0, 24)}…`}
+                </span>
+                <span className="similar-leader" aria-hidden="true" />
+                <span className="similar-status">{p.status}</span>
+                <span className="similar-match mono">{Math.round(p.similarity * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Proveniência: como verificar que esta análise é a que foi ancorada. */}
+      <section className="panel provenance">
+        <h3 className="eyebrow">Provenance</h3>
+        <dl className="prov">
+          <div>
+            <dt>Governance action</dt>
+            <dd className="mono">{analysis.gov_action_id}</dd>
+          </div>
+          {analysis.anchor_hash_valid !== undefined && (
+            <div>
+              <dt>Proposal document</dt>
+              <dd>
+                {analysis.anchor_hash_valid
+                  ? "Hash matches the on-chain anchor"
+                  : "Hash does not match the on-chain anchor"}
+              </dd>
             </div>
           )}
-        </div>
-        <h2 className="detail-title">
-          {analysis.pil_document?.title?.replace("PIL Analysis — ", "") ||
-           analysis.gov_action_id}
-        </h2>
-
-        {summaries.one_liner && (
-          <p className="detail-oneliner">{summaries.one_liner}</p>
-        )}
-
-        <div className="steps-row">
-          {Object.entries(analysis.steps || {}).map(([k, v]) => (
-            <span key={k} className={`step-badge ${v === "ok" || v === "submitted" ? "ok" : v === "skipped" || v === "not_applicable" ? "skip" : "err"}`}>
-              {k}: {v}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="detail-grid">
-
-        {/* Technical Analysis */}
-        {summaries.technical && (
-          <div className="detail-card">
-            <h3>Technical Analysis</h3>
-            <p className="detail-text">{summaries.technical}</p>
-          </div>
-        )}
-
-        {/* Risk Score Gauge */}
-        {risk && <RiskScoreGauge riskScore={risk} />}
-
-        {/* Conflict of Interest */}
-        {conflict && <ConflictPanel conflict={conflict} />}
-
-        {/* Delivery Rate */}
-        {dr && (
-          <div className="detail-card">
-            <h3>Similar Proposals History</h3>
-            <p className="sim-summary">{sim.summary}</p>
-            {pieData.length > 0 && (
-              <div className="pie-wrap">
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value"
-                         label={({ name, value }) => `${name}: ${value}`}>
-                      {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v, n) => [v, n]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                {dr.rate != null && (
-                  <div className="delivery-rate">
-                    <span className="rate-number">{dr.rate}%</span>
-                    <span className="rate-label">delivery rate</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Similar Proposals */}
-        {similar.length > 0 && (
-          <div className="detail-card span-full">
-            <h3>Similar Proposals</h3>
-            <div className="similar-list">
-              {similar.map((p) => (
-                <div key={p.gov_action_id} className="similar-item">
-                  <div className="similar-header">
-                    <span className="similar-type">{p.action_type}</span>
-                    <span className="similar-score">{(p.similarity * 100).toFixed(0)}% similar</span>
-                    <span className="similar-status" style={{ color: STATUS_COLORS[p.status] || "#e2e8f0" }}>
-                      ● {p.status}
-                    </span>
-                  </div>
-                  <div className="similar-title">{p.title || p.one_liner || p.gov_action_id.slice(0, 30)}</div>
-                  <div className="similar-id">{p.gov_action_id.slice(0, 20)}…</div>
-                </div>
-              ))}
+          {analysis.pil_document_hash && (
+            <div>
+              <dt>This analysis</dt>
+              <dd className="mono">{analysis.pil_document_hash}</dd>
             </div>
-          </div>
-        )}
-
-        {/* On-chain Publication — o hash do documento existe assim que a
-            análise roda; a ancoragem é um passo separado e posterior. */}
-        {analysis.pil_document_hash && (
-          <div className="detail-card">
-            <h3>On-chain Publication</h3>
-            <div className="onchain-info">
-              <span className="onchain-label">PIL Doc Hash</span>
-              <code className="onchain-hash">{analysis.pil_document_hash.slice(0, 32)}…</code>
-            </div>
-            {onChain?.tx_hash ? (
-              <div className="onchain-info">
-                <span className="onchain-label">TX Hash</span>
-                <a className="onchain-hash"
-                   href={`https://cardanoscan.io/transaction/${onChain.tx_hash}`}
-                   target="_blank" rel="noopener noreferrer">
-                  {onChain.tx_hash.slice(0, 32)}…
+          )}
+          <div>
+            <dt>On-chain record</dt>
+            <dd>
+              {onChain?.tx_hash ? (
+                <a
+                  className="mono"
+                  href={`https://cardanoscan.io/transaction/${onChain.tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {onChain.tx_hash}
                 </a>
-              </div>
-            ) : (
-              <div className="onchain-info">
-                <span className="onchain-label">Anchor</span>
-                <span className="onchain-pending">Not yet anchored on-chain</span>
-              </div>
-            )}
+              ) : (
+                "Not anchored yet"
+              )}
+            </dd>
           </div>
-        )}
-
-        {/* Full Analysis */}
-        {summaries.full && Object.keys(summaries.full).length > 0 && (
-          <div className="detail-card span-full">
-            <h3>Full Analysis</h3>
-            <div className="full-summary">
-              {Object.entries(summaries.full).map(([k, v]) => (
-                v && (
-                  <div key={k} className="full-section">
-                    <span className="full-key">{k.replace(/_/g, " ")}</span>
-                    <p className="full-val">{typeof v === "string" ? v : JSON.stringify(v)}</p>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-        )}
-
-      </div>
-    </div>
+        </dl>
+      </section>
+    </article>
   );
 }
