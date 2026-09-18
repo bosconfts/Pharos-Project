@@ -137,3 +137,9 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   sem erro visível.
 - `network_name()` deriva a rede de `BLOCKFROST_BASE_URL` — não hardcodar
   mainnet em lugar nenhum.
+- Gateway de IPFS cai. Um 504 do `ipfs.io` no `step2_anchor` já gravou dez
+  actions sem resumo, sem embedding e sem documento PIL. O fetch agora tenta
+  os outros gateways para o mesmo CID (o hash blake2b é conferido de qualquer
+  forma), e o worker só considera uma action concluída se nenhuma etapa de
+  `analysis.steps` estiver em `error` — antes bastava a coluna existir, e a
+  linha estragada nunca mais era reprocessada.

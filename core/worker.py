@@ -26,6 +26,24 @@ from pipeline      import analyze_action, analyze_by_id
 from database      import init_db, get_action
 
 
+def analysis_is_complete(existing: dict) -> bool:
+    """Uma análise conta como feita só se nenhuma etapa dela falhou.
+
+    Antes bastava a coluna `analysis` existir. Quando o gateway de IPFS caía, a
+    linha era gravada com s2_anchor="error" — sem resumo, sem embedding, fora do
+    corpus do M2 — e nunca mais era reprocessada, porque `analysis` estava lá.
+    "skipped" continua valendo como concluído: é uma action sem anchor, e
+    retentar não traria nada.
+    """
+    analysis = existing.get("analysis")
+    if not isinstance(analysis, dict):
+        return False
+    steps = analysis.get("steps")
+    if not isinstance(steps, dict) or not steps:
+        return False
+    return not any(status == "error" for status in steps.values())
+
+
 def run(count: int = 20, page: int = 1, reprocess: bool = False) -> dict:
     actions = fetch_governance_actions(page=page, count=count)
     print(f"Rede: {network_name()} · {len(actions)} actions indexadas\n")
@@ -36,7 +54,7 @@ def run(count: int = 20, page: int = 1, reprocess: bool = False) -> dict:
         gid = action.gov_action_id
         if not reprocess:
             existing = get_action(gid)
-            if existing and existing.get("analysis"):
+            if existing and analysis_is_complete(existing):
                 stats["skipped"] += 1
                 continue
 
