@@ -235,6 +235,11 @@ def run_backfill(verbose: bool = True, force: bool = False):
 
 
 if __name__ == "__main__":
+    # Console do Windows é cp1252 e estoura nos emojis de status — o mesmo
+    # guard que o worker.py já tem. Sem ele o backfill morre no primeiro print.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Re-process all proposals (regenerate summaries)")

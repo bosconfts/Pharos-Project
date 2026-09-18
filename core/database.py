@@ -163,6 +163,33 @@ def get_all_actions(limit: int = 100, offset: int = 0) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def update_lifecycle(gov_action_id: str, epochs: dict):
+    """Grava os epochs de desfecho de uma action já indexada.
+
+    COALESCE para nunca apagar um desfecho já registrado: a chain é a fonte,
+    mas uma resposta parcial do Blockfrost não pode zerar o que o banco tem.
+    """
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute("""
+        UPDATE governance_actions
+        SET ratified_epoch = COALESCE(%s, ratified_epoch),
+            enacted_epoch  = COALESCE(%s, enacted_epoch),
+            expired_epoch  = COALESCE(%s, expired_epoch),
+            dropped_epoch  = COALESCE(%s, dropped_epoch)
+        WHERE gov_action_id = %s
+    """, (
+        epochs.get("ratified_epoch"),
+        epochs.get("enacted_epoch"),
+        epochs.get("expired_epoch"),
+        epochs.get("dropped_epoch"),
+        gov_action_id,
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: int,
                            risk_components: dict, withdrawal_amount: int | None = None,
                            proposer_address: str | None = None):
