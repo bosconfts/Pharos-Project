@@ -22,6 +22,44 @@ from step11_risk_score import compute_risk_score
 from database          import upsert_action, get_action, save_analysis, save_conflict_and_risk
 
 
+def _cached_summaries(gov_action_id: str, anchor_hash: str | None) -> dict | None:
+    """Resumo já persistido para este mesmo documento de anchor, ou None.
+
+    O anchor é endereçado por conteúdo: se o hash declarado pela chain é o mesmo
+    que já está no banco, o texto é o mesmo e o resumo continua valendo. Isso
+    existe porque o `step6_backfill` grava resumo e embedding mas não produz
+    `analysis` nem `pil_document` — sem este reaproveitamento, completar o M3/M4
+    dessas linhas pagaria de novo ao Claude por um texto idêntico.
+
+    Sem hash declarado não há como provar identidade, então não reaproveita.
+    """
+    if not anchor_hash:
+        return None
+
+    row = get_action(gov_action_id)
+    if not row or not row.get("one_liner"):
+        return None
+    if (row.get("anchor_hash") or "").lower() != anchor_hash.lower():
+        return None
+
+    full = row.get("full_summary")
+    if isinstance(full, str):
+        try:
+            full = json.loads(full)
+        except Exception:
+            full = {}
+
+    return {
+        "one_liner": row["one_liner"],
+        "technical": row.get("technical") or "",
+        "full":      full if isinstance(full, dict) else {},
+        "metadata": {
+            "completeness_score": row.get("completeness_score") or 0,
+            "reused":             True,
+        },
+    }
+
+
 def _index_record(action: GovernanceAction, fields: dict, summaries: dict,
                   doc_hash: str | None, embedding: list | None = None) -> dict:
     """Monta o dict que `upsert_action` espera, com todas as chaves obrigatórias."""
@@ -85,17 +123,22 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
             result["steps"]["s2_anchor"] = "error"
 
         if fields:
-            try:
-                summaries = generate_summaries(fields, action.action_type, action.deposit)
+            summaries = _cached_summaries(gid, action.anchor_hash)
+            if summaries:
                 result["summaries"]              = summaries
-                result["steps"]["s3_summarizer"] = "ok"
-            except Exception as e:
-                result["errors"].append(f"S3 error: {e}")
-                result["steps"]["s3_summarizer"] = "error"
-                summaries = {"one_liner": fields.get("title", ""), "technical": "", "full": {}}
-                # Sem isto o resultado sai sem `summaries` e a pagina perde a
-                # abertura em linguagem simples: a degradacao some da vista.
-                result["summaries"] = summaries
+                result["steps"]["s3_summarizer"] = "reused"
+            else:
+                try:
+                    summaries = generate_summaries(fields, action.action_type, action.deposit)
+                    result["summaries"]              = summaries
+                    result["steps"]["s3_summarizer"] = "ok"
+                except Exception as e:
+                    result["errors"].append(f"S3 error: {e}")
+                    result["steps"]["s3_summarizer"] = "error"
+                    summaries = {"one_liner": fields.get("title", ""), "technical": "", "full": {}}
+                    # Sem isto o resultado sai sem `summaries` e a pagina perde a
+                    # abertura em linguagem simples: a degradacao some da vista.
+                    result["summaries"] = summaries
             log(f"  S3 summarizer: {result['steps'].get('s3_summarizer')}")
 
             try:
