@@ -14,7 +14,7 @@ import httpx
 from database import init_db, upsert_action, get_action, count_actions
 from step2_anchor import fetch_and_validate_anchor, extract_cip108_fields
 from step3_summarizer import generate_summaries
-from pipeline import _cached_summaries
+from pipeline import _cached_summaries, has_genuine_summary
 from step4_publish import build_pil_document, compute_document_hash
 from step7_embeddings import embed_text
 
@@ -95,7 +95,7 @@ def process_proposal(client: httpx.Client, item: dict, verbose: bool = True) -> 
     existing = get_action(gov_id)
     if (existing
             and existing.get("embedding") is not None
-            and existing.get("one_liner")
+            and has_genuine_summary(existing)
             and existing.get("title")
             and not getattr(process_proposal, "_force", False)):
         if verbose: print(f"  ⏭  {gov_id[:20]}... already processed")

@@ -22,6 +22,27 @@ from step11_risk_score import compute_risk_score
 from database          import upsert_action, get_action, save_analysis, save_conflict_and_risk
 
 
+def has_genuine_summary(row: dict) -> bool:
+    """A linha tem resumo de verdade, e não o fallback degradado.
+
+    Quando o summarizer falha, o pipeline grava `one_liner = title`, `technical`
+    vazio e `full` vazio, de propósito, para a página não ficar sem abertura em
+    linguagem simples. Mas isso é indistinguível de uma análise real se o teste
+    for só "tem one_liner" — e foi assim que 43 linhas entraram na fila de
+    publicação com o título copiado no lugar da análise. Resumo real tem os três.
+    """
+    if not row.get("one_liner") or not row.get("technical"):
+        return False
+
+    full = row.get("full_summary")
+    if isinstance(full, str):
+        try:
+            full = json.loads(full)
+        except Exception:
+            return False
+    return isinstance(full, dict) and bool(full)
+
+
 def _cached_summaries(gov_action_id: str, anchor_hash: str | None) -> dict | None:
     """Resumo já persistido para este mesmo documento de anchor, ou None.
 
@@ -37,7 +58,7 @@ def _cached_summaries(gov_action_id: str, anchor_hash: str | None) -> dict | Non
         return None
 
     row = get_action(gov_action_id)
-    if not row or not row.get("one_liner"):
+    if not row or not has_genuine_summary(row):
         return None
     if (row.get("anchor_hash") or "").lower() != anchor_hash.lower():
         return None

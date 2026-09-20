@@ -303,6 +303,11 @@ def get_pending_publish(limit: int = 10) -> list[dict]:
 
     A ausência de on_chain_tx é a garantia de idempotência: uma action publicada
     nunca é reprocessada, mesmo que o worker rode várias vezes.
+
+    O resumo precisa ser real. Quando o summarizer falha, o pipeline grava
+    `one_liner = title` com `technical` e `full_summary` vazios — e 43 linhas
+    assim chegaram a ficar nesta fila. Ancorar é irreversível: uma análise falsa
+    publicada na mainnet não sai de lá.
     """
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -312,6 +317,11 @@ def get_pending_publish(limit: int = 10) -> list[dict]:
         WHERE analysis IS NOT NULL
           AND pil_document IS NOT NULL
           AND on_chain_tx IS NULL
+          AND coalesce(one_liner, '') <> ''
+          AND coalesce(technical, '') <> ''
+          AND one_liner IS DISTINCT FROM title
+          AND full_summary IS NOT NULL
+          AND full_summary::text NOT IN ('{}', '""', '"{}"')
         ORDER BY analyzed_at ASC
         LIMIT %s
     """, (limit,))
