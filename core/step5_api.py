@@ -19,7 +19,7 @@ import uvicorn
 
 from step1_indexer import fetch_governance_actions
 from step4_publish import network_name
-from database      import get_all_actions, count_actions, get_analysis, get_conn
+from database      import get_all_actions, count_analyzed, get_analysis, get_conn
 
 NETWORK = network_name()
 
@@ -56,7 +56,7 @@ def health():
 @app.get("/stats")
 def stats():
     try:
-        return {"total_analyzed": count_actions(), "network": NETWORK}
+        return {"total_analyzed": count_analyzed(), "network": NETWORK}
     except Exception:
         return {"total_analyzed": 0, "network": NETWORK}
 
@@ -67,7 +67,7 @@ def history(limit: int = 50, offset: int = 0):
     limit = max(1, min(limit, 200))
     try:
         actions = get_all_actions(limit=limit, offset=offset)
-        return {"count": len(actions), "total": count_actions(), "actions": actions}
+        return {"count": len(actions), "total": count_analyzed(), "actions": actions}
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Banco indisponível: {e}")
 

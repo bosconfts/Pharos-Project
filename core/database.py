@@ -158,15 +158,40 @@ def get_action(gov_action_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+# Resumo real, e não o fallback que o pipeline grava quando o summarizer falha
+# (`one_liner = title`, `technical` e `full_summary` vazios). Vive em SQL porque
+# a API lê daqui e não pode importar o pipeline — o equivalente em Python é
+# `pipeline.has_genuine_summary`, e os dois precisam concordar.
+GENUINE_SUMMARY_SQL = """
+        coalesce(one_liner, '') <> ''
+    AND coalesce(technical, '') <> ''
+    AND one_liner IS DISTINCT FROM title
+    AND full_summary IS NOT NULL
+    AND full_summary::text NOT IN ('{}', '""', '"{}"')
+"""
+
+
+def count_analyzed() -> int:
+    """Quantas actions têm análise de verdade — o número que o site mostra."""
+    conn = get_conn()
+    cur  = conn.cursor()
+    cur.execute(f"SELECT COUNT(*) FROM governance_actions WHERE {GENUINE_SUMMARY_SQL}")
+    n = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return n
+
+
 def get_all_actions(limit: int = 100, offset: int = 0) -> list[dict]:
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(
-        """SELECT gov_action_id, action_type, title, one_liner,
+        f"""SELECT gov_action_id, action_type, title, one_liner,
                   completeness_score, ratified_epoch, enacted_epoch,
                   expired_epoch, dropped_epoch, processed_at,
                   risk_score, withdrawal_amount
            FROM governance_actions
+           WHERE {GENUINE_SUMMARY_SQL}
            ORDER BY processed_at DESC
            LIMIT %s OFFSET %s""",
         (limit, offset)
@@ -260,10 +285,14 @@ def get_analysis(gov_action_id: str) -> dict | None:
     """Retorna a análise persistida, ou None se a action ainda não foi processada."""
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
+    # Sem resumo real não há o que servir: a action aparece como ainda não
+    # analisada, que é a verdade, em vez de devolver o título como se fosse
+    # análise.
+    cur.execute(f"""
         SELECT analysis, pil_document, on_chain_tx, on_chain_status, analyzed_at
         FROM governance_actions
         WHERE gov_action_id = %s
+          AND {GENUINE_SUMMARY_SQL}
     """, (gov_action_id,))
     row = cur.fetchone()
     cur.close()
@@ -311,17 +340,13 @@ def get_pending_publish(limit: int = 10) -> list[dict]:
     """
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
+    cur.execute(f"""
         SELECT gov_action_id, pil_document, pil_doc_hash
         FROM governance_actions
         WHERE analysis IS NOT NULL
           AND pil_document IS NOT NULL
           AND on_chain_tx IS NULL
-          AND coalesce(one_liner, '') <> ''
-          AND coalesce(technical, '') <> ''
-          AND one_liner IS DISTINCT FROM title
-          AND full_summary IS NOT NULL
-          AND full_summary::text NOT IN ('{}', '""', '"{}"')
+          AND {GENUINE_SUMMARY_SQL}
         ORDER BY analyzed_at ASC
         LIMIT %s
     """, (limit,))
