@@ -113,10 +113,24 @@ def upsert_action(data: dict):
         )
         ON CONFLICT (gov_action_id) DO UPDATE SET
             action_type        = EXCLUDED.action_type,
-            ratified_epoch     = EXCLUDED.ratified_epoch,
-            enacted_epoch      = EXCLUDED.enacted_epoch,
-            expired_epoch      = EXCLUDED.expired_epoch,
-            dropped_epoch      = EXCLUDED.dropped_epoch,
+            -- Desfecho na chain é final, então COALESCE: uma resposta parcial
+            -- do Blockfrost não pode zerar o que já está registrado.
+            ratified_epoch     = COALESCE(EXCLUDED.ratified_epoch, governance_actions.ratified_epoch),
+            enacted_epoch      = COALESCE(EXCLUDED.enacted_epoch, governance_actions.enacted_epoch),
+            expired_epoch      = COALESCE(EXCLUDED.expired_epoch, governance_actions.expired_epoch),
+            dropped_epoch      = COALESCE(EXCLUDED.dropped_epoch, governance_actions.dropped_epoch),
+            anchor_url         = COALESCE(EXCLUDED.anchor_url, governance_actions.anchor_url),
+            anchor_hash        = COALESCE(EXCLUDED.anchor_hash, governance_actions.anchor_hash),
+            deposit            = COALESCE(EXCLUDED.deposit, governance_actions.deposit),
+            epoch_expiry       = COALESCE(EXCLUDED.epoch_expiry, governance_actions.epoch_expiry),
+            -- O conteúdo CIP-108 ficava de fora daqui: era insert-only, então
+            -- uma linha criada quando o gateway de IPFS falhou guardava título
+            -- vazio para sempre, mesmo baixando o documento de novo depois.
+            -- NULLIF para que uma extração vazia não apague o que é bom.
+            title              = COALESCE(NULLIF(EXCLUDED.title, ''), governance_actions.title),
+            abstract           = COALESCE(NULLIF(EXCLUDED.abstract, ''), governance_actions.abstract),
+            motivation         = COALESCE(NULLIF(EXCLUDED.motivation, ''), governance_actions.motivation),
+            rationale          = COALESCE(NULLIF(EXCLUDED.rationale, ''), governance_actions.rationale),
             one_liner          = COALESCE(EXCLUDED.one_liner, governance_actions.one_liner),
             technical          = COALESCE(EXCLUDED.technical, governance_actions.technical),
             full_summary       = COALESCE(EXCLUDED.full_summary, governance_actions.full_summary),
