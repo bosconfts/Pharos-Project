@@ -5,6 +5,7 @@ Gera 3 níveis de resumo para uma governance action.
 - Sem chave: extrai diretamente dos campos CIP-108 (fallback determinístico).
 """
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -103,6 +104,33 @@ _USD_PER_MTOK_OUT = 25.0
 USAGE_LOG_PATH = os.getenv("PIL_USAGE_LOG", "usage_log.jsonl")
 
 
+# Uma proposta de Summit trouxe 1,22 MB de rationale, dos quais 97% eram quatro
+# imagens em data URI. Base64 num prompt de texto é ruído que o modelo não usa,
+# e custaria US$ 1,85 de entrada por proposta. Remover não perde conteúdo.
+_DATA_URI_RE = re.compile(
+    r"data:[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+"
+)
+
+# Teto de segurança para o que sobrar. Um documento legítimo grande tem dezenas
+# de milhares de caracteres; 120k já é folgado. O corte é registrado no
+# metadata e avisado no log — truncar em silêncio esconderia o problema.
+MAX_FIELD_CHARS = 120_000
+
+_truncated_fields: list = []
+
+
+def _clean(text) -> str:
+    """Tira imagens embutidas e limita o tamanho de um campo do documento."""
+    if not text:
+        return ""
+    cleaned = _DATA_URI_RE.sub("[embedded image removed]", str(text))
+    if len(cleaned) > MAX_FIELD_CHARS:
+        print(f"    ⚠️  campo com {len(cleaned):,} chars truncado em {MAX_FIELD_CHARS:,}")
+        _truncated_fields.append(len(cleaned))
+        cleaned = cleaned[:MAX_FIELD_CHARS] + "\n[truncated]"
+    return cleaned
+
+
 def _log_usage(usage) -> None:
     """Anexa uma linha de consumo ao JSONL. Nunca interrompe a análise."""
     import json
@@ -127,10 +155,10 @@ def _log_usage(usage) -> None:
 def _summarize_with_claude(fields: dict, action_type: str, deposit: int) -> dict:
     import anthropic
 
-    title      = fields.get("title", "")
-    abstract   = fields.get("abstract", "")
-    motivation = fields.get("motivation", "")
-    rationale  = fields.get("rationale", "")
+    title      = _clean(fields.get("title", ""))
+    abstract   = _clean(fields.get("abstract", ""))
+    motivation = _clean(fields.get("motivation", ""))
+    rationale  = _clean(fields.get("rationale", ""))
     withdraw   = fields.get("withdraw_amount")
     milestones = fields.get("milestones", [])
 
