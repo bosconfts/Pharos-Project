@@ -111,6 +111,7 @@ docker compose up -d                          # Postgres+pgvector e Neo4j locais
 python core/database.py                       # cria/atualiza schema
 python core/worker.py --init-db --count 50    # analisa e persiste
 python core/step6_backfill.py                 # backfill histórico desde Chang
+python core/step12_lifecycle.py               # refresca ratified/enacted/expired/dropped
 python core/publisher.py                      # dry-run da publicação
 python core/publisher.py --publish            # submete (gasta ADA real)
 python core/step5_api.py                      # API em :8000
@@ -134,6 +135,14 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   fora do corpus e o M2 degrada em silêncio (já mordeu uma vez).
 - Os campos `ratified/enacted/expired/dropped_epoch` alimentam o delivery rate
   do M2 e os componentes 1 e 6 do M4. Se vierem nulos, o score cai no neutro
-  sem erro visível.
+  sem erro visível. Eles só existem na chain depois que a proposta resolve —
+  sempre depois da indexação — então o `step12_lifecycle` revisita as pendentes
+  e recalcula o M4; o `worker.py` o chama no início de cada execução.
 - `network_name()` deriva a rede de `BLOCKFROST_BASE_URL` — não hardcodar
   mainnet em lugar nenhum.
+- Gateway de IPFS cai. Um 504 do `ipfs.io` no `step2_anchor` já gravou dez
+  actions sem resumo, sem embedding e sem documento PIL. O fetch agora tenta
+  os outros gateways para o mesmo CID (o hash blake2b é conferido de qualquer
+  forma), e o worker só considera uma action concluída se nenhuma etapa de
+  `analysis.steps` estiver em `error` — antes bastava a coluna existir, e a
+  linha estragada nunca mais era reprocessada.

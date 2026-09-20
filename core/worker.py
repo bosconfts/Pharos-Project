@@ -22,11 +22,43 @@ load_dotenv()
 
 from step1_indexer import fetch_governance_actions
 from step4_publish import network_name
+from step12_lifecycle import refresh_lifecycle
 from pipeline      import analyze_action, analyze_by_id
 from database      import init_db, get_action
 
 
-def run(count: int = 20, page: int = 1, reprocess: bool = False) -> dict:
+def analysis_is_complete(existing: dict) -> bool:
+    """Uma análise conta como feita só se nenhuma etapa dela falhou.
+
+    Antes bastava a coluna `analysis` existir. Quando o gateway de IPFS caía, a
+    linha era gravada com s2_anchor="error" — sem resumo, sem embedding, fora do
+    corpus do M2 — e nunca mais era reprocessada, porque `analysis` estava lá.
+    "skipped" continua valendo como concluído: é uma action sem anchor, e
+    retentar não traria nada.
+    """
+    analysis = existing.get("analysis")
+    if not isinstance(analysis, dict):
+        return False
+    steps = analysis.get("steps")
+    if not isinstance(steps, dict) or not steps:
+        return False
+    return not any(status == "error" for status in steps.values())
+
+
+def run(count: int = 20, page: int = 1, reprocess: bool = False,
+        skip_lifecycle: bool = False) -> dict:
+    # Antes de analisar: fechar o ciclo de vida das actions que resolveram desde
+    # a última execução. Custa uma chamada por proposta ainda em aberto e mantém
+    # honestos o delivery rate do M2 e os componentes 1 e 6 do M4.
+    if not skip_lifecycle:
+        try:
+            lc = refresh_lifecycle(verbose=True)
+            print(f"Ciclo de vida: {lc['updated']} atualizada(s) · "
+                  f"{lc['rescored']} rescorada(s) · {lc['failed']} falha(s)\n")
+        except Exception as e:
+            # Um Blockfrost fora do ar aqui não pode impedir a análise das novas.
+            print(f"⚠️  Refresh de ciclo de vida falhou: {e}\n")
+
     actions = fetch_governance_actions(page=page, count=count)
     print(f"Rede: {network_name()} · {len(actions)} actions indexadas\n")
 
@@ -36,7 +68,7 @@ def run(count: int = 20, page: int = 1, reprocess: bool = False) -> dict:
         gid = action.gov_action_id
         if not reprocess:
             existing = get_action(gid)
-            if existing and existing.get("analysis"):
+            if existing and analysis_is_complete(existing):
                 stats["skipped"] += 1
                 continue
 
@@ -66,6 +98,8 @@ if __name__ == "__main__":
     p.add_argument("--all",   action="store_true", help="reprocessa actions já analisadas")
     p.add_argument("--id",    type=str, help="processa apenas esta gov_action_id")
     p.add_argument("--init-db", action="store_true", help="cria/atualiza o schema antes de rodar")
+    p.add_argument("--skip-lifecycle", action="store_true",
+                   help="não refresca o ciclo de vida das actions já indexadas")
     args = p.parse_args()
 
     if args.init_db:
@@ -80,7 +114,8 @@ if __name__ == "__main__":
             sys.exit(1)
         print(f"\n✅ {args.id} analisada.")
     else:
-        stats = run(count=args.count, page=args.page, reprocess=args.all)
+        stats = run(count=args.count, page=args.page, reprocess=args.all,
+                    skip_lifecycle=args.skip_lifecycle)
         print(f"=== Concluído: {stats['analyzed']} analisadas · "
               f"{stats['skipped']} já existentes · {stats['failed']} falhas ===")
         if stats["failed"]:

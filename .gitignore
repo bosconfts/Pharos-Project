@@ -40,3 +40,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Log de consumo da API (gerado localmente)
+usage_log.jsonl

@@ -92,6 +92,38 @@ def _missing_fields(fields: dict) -> list:
 # Claude API
 # ──────────────────────────────────────────────
 
+# Preço do modelo, por milhão de tokens. Só serve para o log de consumo; se o
+# modelo acima mudar, estes números precisam mudar junto.
+_USD_PER_MTOK_IN  = 5.0
+_USD_PER_MTOK_OUT = 25.0
+
+# O consumo de cada chamada vai para um JSONL local. O `metadata` da resposta
+# carrega os mesmos números, mas se perde antes de chegar ao banco, e sem
+# registro não há como saber quanto um backfill custou senão pelo Console.
+USAGE_LOG_PATH = os.getenv("PIL_USAGE_LOG", "usage_log.jsonl")
+
+
+def _log_usage(usage) -> None:
+    """Anexa uma linha de consumo ao JSONL. Nunca interrompe a análise."""
+    import json
+    from datetime import datetime, timezone
+
+    try:
+        cost = (usage.input_tokens  / 1e6 * _USD_PER_MTOK_IN
+                + usage.output_tokens / 1e6 * _USD_PER_MTOK_OUT)
+        entry = {
+            "at":            datetime.now(timezone.utc).isoformat(),
+            "model":         "claude-opus-4-6",
+            "input_tokens":  usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "usd":           round(cost, 6),
+        }
+        with open(USAGE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
+
 def _summarize_with_claude(fields: dict, action_type: str, deposit: int) -> dict:
     import anthropic
 
@@ -139,6 +171,8 @@ Respond ONLY with valid JSON, no markdown, in this exact format:
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
     )
+
+    _log_usage(message.usage)
 
     import json, re
     raw = message.content[0].text.strip()

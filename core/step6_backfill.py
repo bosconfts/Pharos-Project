@@ -14,6 +14,7 @@ import httpx
 from database import init_db, upsert_action, get_action, count_actions
 from step2_anchor import fetch_and_validate_anchor, extract_cip108_fields
 from step3_summarizer import generate_summaries
+from pipeline import _cached_summaries, has_genuine_summary
 from step4_publish import build_pil_document, compute_document_hash
 from step7_embeddings import embed_text
 
@@ -85,9 +86,18 @@ def process_proposal(client: httpx.Client, item: dict, verbose: bool = True) -> 
     gov_id     = f"{tx_hash}#{cert_index}"
     gov_type   = ACTION_TYPE_MAP.get(item.get("governance_type", ""), item.get("governance_type", "Unknown"))
 
-    # Skip if already processed (unless force mode)
+    # Skip if already processed (unless force mode).
+    #
+    # O embedding sozinho não prova nada: ele é calculado localmente e sai de
+    # graça, enquanto o resumo depende do Claude. Quando a chave ficou sem
+    # crédito, 73 linhas ganharam embedding, falharam no summarizer e ficaram
+    # marcadas como prontas para sempre. Concluído é ter as três coisas.
     existing = get_action(gov_id)
-    if existing and existing.get("embedding") is not None and not getattr(process_proposal, "_force", False):
+    if (existing
+            and existing.get("embedding") is not None
+            and has_genuine_summary(existing)
+            and existing.get("title")
+            and not getattr(process_proposal, "_force", False)):
         if verbose: print(f"  ⏭  {gov_id[:20]}... already processed")
         return True
 
@@ -161,7 +171,10 @@ def process_proposal(client: httpx.Client, item: dict, verbose: bool = True) -> 
                 "references": [],
                 "authors":    [],
             }
-            summaries = generate_summaries(fields_for_summary, gov_type, record["deposit"] or 0)
+            # Anchor inalterado, resumo já pago: reaproveita em vez de chamar
+            # o Claude de novo pelo mesmo texto.
+            summaries = (_cached_summaries(gov_id, anchor_hash)
+                         or generate_summaries(fields_for_summary, gov_type, record["deposit"] or 0))
             record.update({
                 "one_liner":          summaries.get("one_liner"),
                 "technical":          summaries.get("technical"),
@@ -235,6 +248,11 @@ def run_backfill(verbose: bool = True, force: bool = False):
 
 
 if __name__ == "__main__":
+    # Console do Windows é cp1252 e estoura nos emojis de status — o mesmo
+    # guard que o worker.py já tem. Sem ele o backfill morre no primeiro print.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Re-process all proposals (regenerate summaries)")
