@@ -15,7 +15,6 @@ from database import init_db, upsert_action, get_action, count_actions
 from step2_anchor import fetch_and_validate_anchor, extract_cip108_fields
 from step3_summarizer import generate_summaries
 from pipeline import _cached_summaries, has_genuine_summary
-from step4_publish import build_pil_document, compute_document_hash
 from step7_embeddings import embed_text
 
 BLOCKFROST_PROJECT_ID = os.getenv("BLOCKFROST_PROJECT_ID")
@@ -196,17 +195,11 @@ def process_proposal(client: httpx.Client, item: dict, verbose: bool = True) -> 
         except Exception as e:
             if verbose: print(f"    ⚠️  embedding: {e}")
 
-    # PIL doc hash
-    if record["one_liner"]:
-        try:
-            doc  = build_pil_document(gov_id, gov_type, anchor_url or "", anchor_hash, {
-                "one_liner": record["one_liner"],
-                "technical": record["technical"] or "",
-                "full":      record["full_summary"] or {},
-            })
-            record["pil_doc_hash"] = compute_document_hash(doc)
-        except Exception:
-            pass
+    # O backfill não grava `pil_doc_hash`. Ele montava um documento só para tirar
+    # o hash e o descartava: o hash ficava sem documento correspondente no banco,
+    # e ao reprocessar uma linha já completa sobrescrevia o hash do documento
+    # real — que o publisher então recusava por divergência. O documento e o
+    # hash são produzidos juntos pelo worker, depois do M4.
 
     import json
     if isinstance(record.get("full_summary"), dict):

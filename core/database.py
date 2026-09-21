@@ -258,21 +258,32 @@ def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: 
 
 
 def save_analysis(gov_action_id: str, analysis: dict, pil_document: dict | None = None,
-                  similarity_data: dict | None = None):
-    """Persiste o resultado completo do pipeline. A API lê exclusivamente daqui."""
+                  similarity_data: dict | None = None, pil_doc_hash: str | None = None):
+    """Persiste o resultado completo do pipeline. A API lê exclusivamente daqui.
+
+    Documento e hash andam juntos. O publisher recalcula o hash do documento
+    gravado e recusa se divergir do registrado; se um fosse atualizado sem o
+    outro, toda a fila seria recusada — ou pior, um documento mudaria sem que
+    o hash conferido acusasse.
+    """
     import json
+    if (pil_document is None) != (pil_doc_hash is None):
+        raise ValueError("pil_document e pil_doc_hash precisam ser gravados juntos")
+
     conn = get_conn()
     cur  = conn.cursor()
     cur.execute("""
         UPDATE governance_actions
         SET analysis        = %s,
             pil_document    = COALESCE(%s, pil_document),
+            pil_doc_hash    = COALESCE(%s, pil_doc_hash),
             similarity_data = COALESCE(%s, similarity_data),
             analyzed_at     = NOW()
         WHERE gov_action_id = %s
     """, (
         json.dumps(analysis, default=str),
         json.dumps(pil_document, default=str) if pil_document is not None else None,
+        pil_doc_hash,
         json.dumps(similarity_data, default=str) if similarity_data is not None else None,
         gov_action_id,
     ))
@@ -327,7 +338,7 @@ def set_on_chain_result(gov_action_id: str, status: str, tx_hash: str | None = N
     conn.close()
 
 
-def get_pending_publish(limit: int = 10) -> list[dict]:
+def get_pending_publish(limit: int = 10, gov_action_id: str | None = None) -> list[dict]:
     """Actions já analisadas que ainda não têm transação on-chain confirmada.
 
     A ausência de on_chain_tx é a garantia de idempotência: uma action publicada
@@ -347,9 +358,13 @@ def get_pending_publish(limit: int = 10) -> list[dict]:
           AND pil_document IS NOT NULL
           AND on_chain_tx IS NULL
           AND {GENUINE_SUMMARY_SQL}
+          -- Escolher uma action específica é só um filtro a mais sobre a mesma
+          -- fila: o id precisa passar por todas as condições acima, então ele
+          -- não serve de atalho para publicar algo que não seria elegível.
+          AND (%s::text IS NULL OR gov_action_id = %s::text)
         ORDER BY analyzed_at ASC
         LIMIT %s
-    """, (limit,))
+    """, (gov_action_id, gov_action_id, limit))
     rows = cur.fetchall()
     cur.close()
     conn.close()

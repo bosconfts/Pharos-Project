@@ -162,16 +162,10 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
                     result["summaries"] = summaries
             log(f"  S3 summarizer: {result['steps'].get('s3_summarizer')}")
 
-            try:
-                doc      = build_pil_document(gid, action.action_type, action.anchor_url,
-                                              action.anchor_hash or "", summaries)
-                doc_hash = compute_document_hash(doc)
-                result["pil_document_hash"]    = doc_hash
-                result["steps"]["s4_document"] = "ok"
-                log(f"  S4 document: {doc_hash[:32]}...")
-            except Exception as e:
-                result["errors"].append(f"S4 error: {e}")
-                result["steps"]["s4_document"] = "error"
+    # O documento PIL (S4) é montado só depois do M4, lá embaixo. Ele era montado
+    # aqui, antes de M2–M4 rodarem, e nunca refeito: o documento ancorado saía com
+    # o score "PENDING" e sem conflitos nem similares — o M2–M4 inteiro ficava
+    # de fora do registro on-chain.
 
     # ── Embedding: calculado antes do upsert para entrar no corpus de busca.
     # Se ficasse só na memória, esta action nunca seria encontrada como
@@ -263,9 +257,29 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
         result["steps"]["m4_risk"] = "error"
         result["errors"].append(f"M4 error: {e}")
 
+    # ── S4: documento PIL, agora com a análise completa ─────────────────────────
+    if fields:
+        try:
+            doc = build_pil_document(
+                gid, action.action_type, action.anchor_url, action.anchor_hash or "",
+                summaries,
+                risk_score        = result.get("risk_score"),
+                similar_proposals = (similarity or {}).get("similar_proposals", []),
+                conflicts         = (result.get("conflict") or {}).get("conflicts", []),
+            )
+            doc_hash = compute_document_hash(doc)
+            result["pil_document_hash"]    = doc_hash
+            result["steps"]["s4_document"] = "ok"
+            log(f"  S4 document: {doc_hash[:32]}...")
+        except Exception as e:
+            doc, doc_hash = None, None
+            result["errors"].append(f"S4 error: {e}")
+            result["steps"]["s4_document"] = "error"
+
     if persist:
         try:
-            save_analysis(gid, result, pil_document=doc, similarity_data=similarity)
+            save_analysis(gid, result, pil_document=doc, similarity_data=similarity,
+                          pil_doc_hash=doc_hash)
         except Exception as e:
             result["errors"].append(f"DB analysis save error: {e}")
 

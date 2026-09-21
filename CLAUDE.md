@@ -112,8 +112,10 @@ python core/database.py                       # cria/atualiza schema
 python core/worker.py --init-db --count 50    # analisa e persiste
 python core/step6_backfill.py                 # backfill histórico desde Chang
 python core/step12_lifecycle.py               # refresca ratified/enacted/expired/dropped
+python core/step13_documents.py --dry-run     # remonta documentos PIL a partir do banco
 python core/publisher.py                      # dry-run da publicação
 python core/publisher.py --publish            # submete (gasta ADA real)
+python core/publisher.py --publish --id <gid> # ancora só esta action, se elegível
 python core/step5_api.py                      # API em :8000
 cd dashboard && npm run dev                   # dashboard em :5173
 ```
@@ -140,6 +142,12 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   e recalcula o M4; o `worker.py` o chama no início de cada execução.
 - `network_name()` deriva a rede de `BLOCKFROST_BASE_URL` — não hardcodar
   mainnet em lugar nenhum.
+- O documento PIL é o que vai para a chain, e ancoragem não se desfaz. Ele é
+  montado **depois** do M4: era montado antes de M2–M4 e saía com o score
+  "PENDING", sem conflitos nem similares, apontando para um domínio que não
+  existe e dizendo que o pipeline era determinístico. Documento e
+  `pil_doc_hash` são gravados juntos pelo `save_analysis` — o publisher
+  recalcula o hash e recusa se divergir.
 - Gateway de IPFS cai. Um 504 do `ipfs.io` no `step2_anchor` já gravou dez
   actions sem resumo, sem embedding e sem documento PIL. O fetch agora tenta
   os outros gateways para o mesmo CID (o hash blake2b é conferido de qualquer
