@@ -45,8 +45,16 @@ def preflight() -> list[str]:
     return problems
 
 
-def run(limit: int = 5, dry_run: bool = True) -> dict:
-    pending = get_pending_publish(limit=limit)
+def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) -> dict:
+    pending = get_pending_publish(limit=limit, gov_action_id=gov_action_id)
+
+    # Um --id que não volta da fila é um id inelegível (já ancorado, sem resumo
+    # real, sem documento) ou digitado errado. Dizer isso é melhor que um
+    # "nada pendente" genérico, que pareceria sucesso.
+    if gov_action_id and not pending:
+        print(f"❌ '{gov_action_id}' não está na fila de publicação.")
+        print("   Já foi ancorada, não tem análise real, ou o id está errado.")
+        return {"submitted": 0, "failed": 1, "pending": 0}
     net     = network_name()
     stats   = {"submitted": 0, "failed": 0, "pending": len(pending)}
 
@@ -146,6 +154,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description="PIL on-chain publisher")
     p.add_argument("--publish", action="store_true", help="submete de verdade (sem isso, dry-run)")
     p.add_argument("--limit",   type=int, default=5, help="máximo de documentos por execução")
+    p.add_argument("--id",      type=str, help="publica apenas esta gov_action_id, se elegível")
     args = p.parse_args()
 
     print("=== PIL On-Chain Publisher ===\n")
@@ -160,7 +169,7 @@ if __name__ == "__main__":
         if network_name() == "mainnet":
             print("⚠️  MAINNET — esta execução gasta ADA real.\n")
 
-    stats = run(limit=args.limit, dry_run=not args.publish)
+    stats = run(limit=args.limit, dry_run=not args.publish, gov_action_id=args.id)
     print(f"\n=== {stats['submitted']} submetidas · {stats['failed']} falhas ===")
     if stats["failed"]:
         sys.exit(1)
