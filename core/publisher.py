@@ -148,6 +148,16 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
 
 
 if __name__ == "__main__":
+    # O pycardano formata o estado do TransactionBuilder com pprintpp num buffer
+    # que usa a codificação do locale — cp1252 no Windows — e faz isso num
+    # f-string avaliado mesmo com o log desligado. Qualquer "₳" no metadatum,
+    # comum em proposta de tesouro, derrubava a montagem da transação. Só este
+    # processo roda no Windows (é o único com a signing key), então é aqui que
+    # quebra. No modo UTF-8 do Python o locale vira utf-8; sem ele, reexecuta.
+    if not sys.flags.utf8_mode:
+        import subprocess
+        sys.exit(subprocess.call([sys.executable, "-X", "utf8", *sys.argv]))
+
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
