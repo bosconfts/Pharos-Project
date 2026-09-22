@@ -231,8 +231,14 @@ def update_lifecycle(gov_action_id: str, epochs: dict):
 
 def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: int,
                            risk_components: dict, withdrawal_amount: int | None = None,
-                           proposer_address: str | None = None):
-    """Persist M3/M4 results for a governance action."""
+                           proposer_address: str | None = None, risk: dict | None = None):
+    """Persist M3/M4 results for a governance action.
+
+    O site lê o score de dois lugares: a lista, da coluna `risk_score`; o painel
+    de detalhe, de `analysis.risk_score` e `analysis.conflict`. Um recálculo
+    fora do pipeline que gravasse só as colunas deixaria os dois mostrando
+    números diferentes para a mesma proposta. Com `risk`, o JSON acompanha.
+    """
     import json
     conn = get_conn()
     cur  = conn.cursor()
@@ -242,7 +248,12 @@ def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: 
             risk_score        = %s,
             risk_components   = %s,
             withdrawal_amount = COALESCE(%s, withdrawal_amount),
-            proposer_address  = COALESCE(%s, proposer_address)
+            proposer_address  = COALESCE(%s, proposer_address),
+            analysis = CASE
+                WHEN %s::jsonb IS NULL OR analysis IS NULL THEN analysis
+                ELSE jsonb_set(jsonb_set(analysis, '{risk_score}', %s::jsonb),
+                               '{conflict}', %s::jsonb)
+            END
         WHERE gov_action_id = %s
     """, (
         json.dumps(conflict_data),
@@ -250,6 +261,9 @@ def save_conflict_and_risk(gov_action_id: str, conflict_data: dict, risk_score: 
         json.dumps(risk_components),
         withdrawal_amount,
         proposer_address,
+        json.dumps(risk) if risk is not None else None,
+        json.dumps(risk) if risk is not None else None,
+        json.dumps(conflict_data),
         gov_action_id,
     ))
     conn.commit()

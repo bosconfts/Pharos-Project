@@ -1,7 +1,15 @@
 """
-Step 10 — Conflict of Interest Detector (M3)
-Detects financial relationships between proposal submitters and beneficiaries.
-Only applicable to TreasuryWithdrawals.
+Step 10 — Who Benefits (M3)
+
+Para cada saque de tesouro, registra fatos verificáveis na chain: quem submeteu
+a proposta, para quais carteiras o dinheiro vai e quanto cada uma recebe, e o
+que essas mesmas carteiras já pediram ou receberam do tesouro antes.
+
+Isto não é mais um detector de conflito de interesse. A checagem que havia
+("proponente e beneficiário já transacionaram?") comparava a carteira que pagou
+a taxa de submissão — em geral um administrador que submete em lote — com a do
+desenvolvedor, e acusava como HIGH o que era rotina. Um detector real precisa
+olhar para quem decide (DReps) se beneficiando da própria decisão.
 """
 import os
 import sys
@@ -45,30 +53,9 @@ def _stake_of(client, address: str) -> str | None:
     return data.get("stake_address") if data else None
 
 
-def _payment_addrs(client, stake: str) -> list[str]:
-    data = _get(client, f"/accounts/{stake}/addresses", {"count": 20})
-    if not isinstance(data, list):
-        return []
-    return [item["address"] for item in data]
-
-
 def _withdrawals(client, tx_hash: str, cert_index: int) -> list[dict]:
     data = _get(client, f"/governance/proposals/{tx_hash}/{cert_index}/withdrawals")
     return data if isinstance(data, list) else []
-
-
-def _addr_txs(client, address: str, count: int = 30) -> set[str]:
-    data = _get(client, f"/addresses/{address}/transactions", {"count": count, "order": "desc"})
-    if not isinstance(data, list):
-        return set()
-    return {t["tx_hash"] for t in data}
-
-
-def _tx_output_addrs(client, tx_hash: str) -> set[str]:
-    data = _get(client, f"/txs/{tx_hash}/utxos")
-    if not data:
-        return set()
-    return {o["address"] for o in data.get("outputs", [])}
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
@@ -137,93 +124,100 @@ def detect_conflicts(gov_action_id: str, tx_hash: str, cert_index: int, action_t
             except Exception:
                 pass
 
+        # Quanto cada carteira recebe, e se ela é a de quem submeteu. Vários
+        # saques pagam mais de uma carteira; atribuir o total a cada uma seria
+        # contar o mesmo dinheiro duas vezes.
+        result["beneficiaries"] = [
+            {
+                "stake_address":   w["stake_address"],
+                "amount_lovelace": int(w.get("amount", 0)),
+                "is_submitter":    w["stake_address"] in proposer_stakes,
+                "is_script":       is_script_stake(w["stake_address"]),
+            }
+            for w in withdrawals if w.get("stake_address")
+        ]
+
         conflicts: list[dict] = []
 
-        # ── Check A: Proposer IS a beneficiary (same stake key) ───────────────
-        # Classificado como INFO, não como conflito. Numa retirada de tesouraria
-        # o normal é que quem propõe receba os fundos — organizações submetem
-        # propostas para financiar a si mesmas, e isso é o desenho do processo,
-        # não um desvio. Marcar como HIGH dispararia em quase toda withdrawal e
-        # zeraria 20 pontos do score em todas elas, tornando o sinal inútil.
-        # O que de fato indica conflito é relacionamento financeiro *não
-        # declarado* com terceiros beneficiários — isso é o Check B.
+        # Quem submete receber os fundos é o desenho normal de uma retirada:
+        # organizações propõem saques para financiar a si mesmas. Divulgação,
+        # não achado — por isso INFO, que não tira pontos.
         for p_stake in proposer_stakes:
             if p_stake in beneficiary_stakes:
                 declared = bool(anchor_text) and p_stake in anchor_text
                 conflicts.append({
-                    "severity":         "INFO",
-                    "type":             "self_beneficiary",
-                    "description":      "Proposer stake address is a direct beneficiary of this withdrawal",
-                    "note":             "Structural for treasury withdrawals — disclosure, not a finding.",
+                    "severity":           "INFO",
+                    "type":               "self_beneficiary",
+                    "description":        "The wallet that submitted this proposal also receives its funds",
+                    "note":               "Structural for treasury withdrawals — disclosure, not a finding.",
                     "declared_in_anchor": declared,
-                    "proposer_stake":   p_stake,
-                    "beneficiary_stake": p_stake,
-                    "evidence_txhash":  tx_hash,
+                    "proposer_stake":     p_stake,
+                    "beneficiary_stake":  p_stake,
+                    "evidence_txhash":    tx_hash,
                 })
 
-        # ── Check B: Direct transactions between proposer and beneficiaries ───
-        # A própria submissão da proposta é uma transação compartilhada entre
-        # proponente e beneficiário. Contá-la seria circular: apresentaria a
-        # proposta como prova de relacionamento financeiro *prévio*, e
-        # duplicaria o achado do Check A como um segundo conflito HIGH.
-        # Evidência precisa ser anterior e independente da proposta.
-        excluded_txs = {tx_hash}
-
-        if len(conflicts) < 5:
-            for p_addr in proposer_addrs[:2]:
-                p_txs = _addr_txs(client, p_addr, count=40) - excluded_txs
-                time.sleep(0.15)
-
-                for b_stake in beneficiary_stakes[:4]:
-                    b_addrs = _payment_addrs(client, b_stake)
-                    time.sleep(0.15)
-
-                    for b_addr in b_addrs[:3]:
-                        b_txs = _addr_txs(client, b_addr, count=40) - excluded_txs
-                        time.sleep(0.15)
-
-                        shared = p_txs & b_txs
-                        if not shared:
-                            continue
-
-                        evidence_tx = next(iter(shared))
-                        out_addrs   = _tx_output_addrs(client, evidence_tx)
-                        time.sleep(0.1)
-
-                        if b_addr in out_addrs:
-                            sev  = "HIGH"
-                            desc = f"Proposer sent funds to beneficiary in tx {evidence_tx[:16]}…"
-                        elif p_addr in out_addrs:
-                            sev  = "MEDIUM"
-                            desc = f"Beneficiary sent funds to proposer in tx {evidence_tx[:16]}…"
-                        else:
-                            sev  = "LOW"
-                            desc = f"Proposer and beneficiary share a common transaction"
-
-                        conflicts.append({
-                            "severity":          sev,
-                            "type":              "direct_transaction",
-                            "description":       desc,
-                            "proposer_address":  p_addr,
-                            "beneficiary_stake": b_stake,
-                            "evidence_txhash":   evidence_tx,
-                        })
-
-                        if _NEO4J:
-                            try:
-                                graph.add_transaction(evidence_tx, p_addr, b_addr, 0)
-                            except Exception:
-                                pass
-
-                        if len(conflicts) >= 5:
-                            break
-                    if len(conflicts) >= 5:
-                        break
-                if len(conflicts) >= 5:
-                    break
-
-        # Sort: HIGH first
-        order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-        conflicts.sort(key=lambda c: order.get(c["severity"], 3))
         result["conflicts"] = conflicts
         return result
+
+
+def is_script_stake(stake_address: str) -> bool:
+    """A carteira de stake é um contrato inteligente, e não uma chave?
+
+    O primeiro caractere depois do separador "1" do bech32 carrega os 5 bits
+    altos do cabeçalho: 0xE1 (chave) vira "u", 0xF1 (script) vira "7" — em
+    mainnet ("stake1") e testnet ("stake_test1"). Conferido contra a
+    decodificação completa nas 29 beneficiárias da base.
+    """
+    _, _, data = (stake_address or "").partition("1")
+    return data[:1] == "7"
+
+
+def beneficiary_history(gov_action_id: str, beneficiaries: list[dict],
+                        epoch_expiry: int | None) -> list[dict]:
+    """Acrescenta a cada beneficiária o que ela já pediu e recebeu do tesouro.
+
+    "Antes" é por epoch_expiry estritamente menor: as propostas submetidas no
+    mesmo lote vencem juntas e não contam como histórico umas das outras.
+    Recebido é o que foi promulgado (enacted) — pedir não é receber.
+
+    Contexto para quem vota, não penalidade: não entra no score.
+    """
+    if not beneficiaries or epoch_expiry is None:
+        return beneficiaries
+
+    from database import get_conn
+
+    conn = get_conn()
+    cur  = conn.cursor()
+    enriched = []
+    for b in beneficiaries:
+        cur.execute("""
+            SELECT (item->>'amount_lovelace')::bigint, g.enacted_epoch IS NOT NULL
+            FROM governance_actions g,
+                 jsonb_array_elements(g.conflict_data->'beneficiaries') AS item
+            WHERE g.action_type = 'TreasuryWithdrawals'
+              AND g.gov_action_id <> %s
+              AND g.epoch_expiry < %s
+              AND item->>'stake_address' = %s
+        """, (gov_action_id, epoch_expiry, b["stake_address"]))
+        rows = cur.fetchall()
+        script = is_script_stake(b["stake_address"])
+
+        # 98 de 112 pagamentos da base caem em contratos (escrow do orçamento),
+        # de onde o dinheiro é liberado para cada fornecedor. Somar o que um
+        # contrato já recebeu e exibir na proposta de um fornecedor diria que
+        # ele recebeu centenas de milhões — verdade sobre o contrato, falso
+        # sobre a proposta. Para contrato, só a contagem de saques que o usam.
+        if script:
+            prior = {"proposals": len(rows), "shared_contract": True}
+        else:
+            prior = {
+                "proposals":          len(rows),
+                "requested_lovelace": sum(r[0] or 0 for r in rows),
+                "enacted":            sum(1 for r in rows if r[1]),
+                "received_lovelace":  sum(r[0] or 0 for r in rows if r[1]),
+            }
+        enriched.append({**b, "is_script": script, "prior": prior})
+    cur.close()
+    conn.close()
+    return enriched
