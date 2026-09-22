@@ -69,7 +69,8 @@
 
 .index-pane { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 12px; }
 
-.pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pane-head { display: flex; align-items: center; gap: 12px; }
+.pane-sub  { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .pane-head h2 {
   font-family: var(--display);
   font-size: 19px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink);
@@ -84,6 +85,24 @@
 }
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--seal); border-bottom-color: var(--seal); }
+
+/* Busca: uma linha fina ao lado do título, no mesmo registro discreto das abas. */
+.search-input {
+  flex: 1; min-width: 0;
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  transition: border-color 0.15s;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { outline: none; border-color: var(--seal); }
+.search-input:disabled { opacity: 0.55; cursor: default; }
+.search-count {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap;
+}
 
 .record-pane { min-width: 0; }
 
@@ -111,4 +130,6 @@
 @media (max-width: 900px) {
   .main { grid-template-columns: minmax(0, 1fr); }
   .index-pane { position: static; }
+  /* Abaixo de 16px o iOS dá zoom na página ao focar o campo. */
+  .search-input { font-size: 16px; }
 }
