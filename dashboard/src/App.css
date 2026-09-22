@@ -85,6 +85,24 @@
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--seal); border-bottom-color: var(--seal); }
 
+/* Busca: uma linha fina, no mesmo registro discreto das abas. */
+.search-input {
+  width: 100%;
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  transition: border-color 0.15s;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { outline: none; border-color: var(--seal); }
+.search-count {
+  margin-top: 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted);
+}
+
 .record-pane { min-width: 0; }
 
 /* ── Estados ───────────────────────────────────────────────────────────── */

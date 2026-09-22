@@ -23,12 +23,15 @@ function status(a) {
   return "Open";
 }
 
-export default function ActionList({ actions, state, tab, selected, onSelect }) {
+export default function ActionList({ actions, state, tab, query, selected, onSelect }) {
   if (state === "loading") {
     return <p className="index-note">Loading index…</p>;
   }
   if (state === "offline") {
     return <p className="index-note">Index unavailable. Reload in a moment.</p>;
+  }
+  if (!actions.length && query && query.trim()) {
+    return <p className="index-note">Nothing in the index matches “{query.trim()}”.</p>;
   }
   if (!actions.length) {
     return (
