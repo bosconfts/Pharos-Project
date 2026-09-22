@@ -105,8 +105,23 @@ export default function App() {
 
       <main className="main">
         <aside className="index-pane">
+          {/* A busca fica colada ao título e sempre no lugar: aparecer só
+              depois da lista carregar faria o cabeçalho pular de altura. */}
           <div className="pane-head">
             <h2>Index</h2>
+            <input
+              type="search"
+              className="search-input"
+              placeholder={tab === "analysed" ? "Search proposals" : "Search by id or type"}
+              aria-label="Search the index"
+              value={query}
+              disabled={listState !== "ok"}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+            />
+          </div>
+
+          <div className="pane-sub">
             <div className="tabs">
               <button
                 className={tab === "analysed" ? "tab active" : "tab"}
@@ -121,26 +136,12 @@ export default function App() {
                 On chain
               </button>
             </div>
+            {query.trim() && (
+              <span className="search-count" aria-live="polite">
+                {visible.length} of {actions.length}
+              </span>
+            )}
           </div>
-
-          {listState === "ok" && actions.length > 0 && (
-            <div className="search">
-              <input
-                type="search"
-                className="search-input"
-                placeholder={tab === "analysed" ? "Search proposals" : "Search by id or type"}
-                aria-label="Search the index"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-              />
-              {query.trim() && (
-                <p className="search-count" aria-live="polite">
-                  {visible.length} of {actions.length}
-                </p>
-              )}
-            </div>
-          )}
 
           <ActionList
             actions={visible}
