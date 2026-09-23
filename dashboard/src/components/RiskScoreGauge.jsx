@@ -26,6 +26,11 @@ export default function RiskScoreGauge({ riskScore }) {
         <div className="verdict-read">
           <p className="verdict-level">{level}</p>
           <p className="verdict-plain">{PLAIN[t]}</p>
+          {/* A escala anda ao contrário do que o número sugere, e a página não
+              dizia isso em lugar nenhum: só o documento ancorado explicava. */}
+          <p className="verdict-scale-note">
+            Scored out of 100 — a higher score means lower risk.
+          </p>
         </div>
       </div>
 

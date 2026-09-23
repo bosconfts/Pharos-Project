@@ -17,7 +17,7 @@ from step3_summarizer  import generate_summaries
 from step4_publish     import build_pil_document, compute_document_hash
 from step7_embeddings  import embed_text
 from step8_similarity  import analyze_similarity, find_similar
-from step10_conflict   import detect_conflicts
+from step10_conflict   import detect_conflicts, beneficiary_history
 from step11_risk_score import compute_risk_score
 from database          import upsert_action, get_action, save_analysis, save_conflict_and_risk
 
@@ -209,6 +209,13 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
                                ("title", "abstract", "motivation", "rationale"))
         conflict_result                = detect_conflicts(gid, gid.split("#")[0], cert_idx,
                                                           action.action_type, anchor_text=anchor_text)
+        # O que cada carteira beneficiária já pediu e recebeu do tesouro. Contexto
+        # para quem vota; um banco fora do ar aqui não pode derrubar o M3.
+        try:
+            conflict_result["beneficiaries"] = beneficiary_history(
+                gid, conflict_result.get("beneficiaries", []), action.epoch_expiry)
+        except Exception as e:
+            result["errors"].append(f"Beneficiary history skipped: {e}")
         result["conflict"]             = conflict_result
         result["steps"]["m3_conflict"] = conflict_result.get("status", "error")
     except Exception as e:

@@ -78,37 +78,7 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
     }
 
     # ── 3. Conflict of Interest (20 pts) ──────────────────────────────────────
-    high = sum(1 for c in conflicts if c.get("severity") == "HIGH")
-    med  = sum(1 for c in conflicts if c.get("severity") == "MEDIUM")
-    low  = sum(1 for c in conflicts if c.get("severity") == "LOW")
-    # INFO não é achado: é divulgação (ex.: proponente é beneficiário declarado,
-    # que é o desenho normal de uma retirada de tesouraria). Aparece no output
-    # para o DRep ver, mas não tira pontos.
-    info = sum(1 for c in conflicts if c.get("severity") == "INFO")
-
-    if action_type != "TreasuryWithdrawals":
-        c3    = 20
-        c3_ev = "Not applicable (no direct financial beneficiaries)"
-    elif not (high or med or low):
-        c3    = 20
-        c3_ev = (f"No financial conflicts detected ({info} disclosure(s) noted)"
-                 if info else "No financial conflicts detected")
-    elif high > 0:
-        c3    = 0
-        c3_ev = f"{high} HIGH severity conflict(s) detected"
-    elif med > 0:
-        c3    = 8
-        c3_ev = f"{med} MEDIUM + {low} LOW conflict(s) detected"
-    else:
-        c3    = 14
-        c3_ev = f"{low} LOW severity conflict(s) detected"
-    components["conflict_of_interest"] = {
-        "label":    "Conflict of Interest",
-        "score":    c3,
-        "max":      20,
-        "weight":   "20%",
-        "evidence": c3_ev,
-    }
+    components["conflict_of_interest"] = conflict_component(action_type, conflicts)
 
     # ── 4. Treasury Value (15 pts) ────────────────────────────────────────────
     if action_type != "TreasuryWithdrawals":
@@ -169,16 +139,76 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
         "evidence": c6_ev,
     }
 
-    # ── Total & level ─────────────────────────────────────────────────────────
+    return _finalize(record.get("gov_action_id"), components)
+
+
+def _finalize(gov_action_id, components: dict) -> dict:
+    """Total é a soma dos componentes; o nível sai do total."""
     total = sum(c["score"] for c in components.values())
     if   total >= 70: level = "LOW RISK"
     elif total >= 45: level = "MEDIUM RISK"
     else:             level = "HIGH RISK"
 
     return {
-        "gov_action_id": record.get("gov_action_id"),
+        "gov_action_id": gov_action_id,
         "total":         total,
         "max":           100,
         "level":         level,
         "components":    components,
     }
+
+
+def conflict_component(action_type: str, conflicts: list | None) -> dict:
+    """Componente 3 do M4.
+
+    Hoje nenhuma checagem de conflito de interesse roda. A que existia comparava
+    o histórico da carteira que pagou a taxa de submissão com o da carteira
+    beneficiária — mas quem paga a submissão costuma ser um administrador (a
+    Intersect submeteu 39 dos 104 saques, em lote, por desenvolvedores
+    diferentes), então ela media se duas carteiras já tinham se tocado, o que em
+    saque de tesouro é quase sempre normal. Das 11 acusações HIGH que produziu,
+    4 comparavam uma carteira com ela mesma.
+
+    Os pontos ficam cheios, como já ficavam para quase todas as propostas, e a
+    evidência diz a verdade: não avaliado. Um achado real (HIGH/MEDIUM/LOW) de
+    uma checagem futura volta a tirar pontos.
+
+    Os valores abaixo são publicados como legenda no painel "Who benefits"
+    (dashboard/src/components/ConflictPanel.jsx): mudar um exige mudar o outro.
+    """
+    conflicts = conflicts or []
+    high = sum(1 for c in conflicts if c.get("severity") == "HIGH")
+    med  = sum(1 for c in conflicts if c.get("severity") == "MEDIUM")
+    low  = sum(1 for c in conflicts if c.get("severity") == "LOW")
+
+    if action_type != "TreasuryWithdrawals":
+        score, ev = 20, "Not applicable (no direct financial beneficiaries)"
+    elif high:
+        score, ev = 0, f"{high} HIGH severity conflict(s) detected"
+    elif med:
+        score, ev = 8, f"{med} MEDIUM + {low} LOW conflict(s) detected"
+    elif low:
+        score, ev = 14, f"{low} LOW severity conflict(s) detected"
+    else:
+        score, ev = 20, ("Not assessed — no conflict-of-interest check currently runs. "
+                         "Recipients and their treasury history are listed under Who benefits.")
+
+    return {
+        "label":    "Conflict of Interest",
+        "score":    score,
+        "max":      20,
+        "weight":   "20%",
+        "evidence": ev,
+    }
+
+
+def rescore_conflict(risk: dict, action_type: str, conflicts: list | None) -> dict:
+    """Troca só o componente de conflito de um M4 já calculado.
+
+    Recalcular o M4 inteiro chamaria o find_similar com o corpus de hoje, e o
+    score se moveria por causa da similaridade — não do conflito, que é o que
+    mudou. Aqui os outros cinco componentes ficam exatamente como estavam.
+    """
+    components = dict(risk.get("components") or {})
+    components["conflict_of_interest"] = conflict_component(action_type, conflicts)
+    return _finalize(risk.get("gov_action_id"), components)

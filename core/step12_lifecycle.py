@@ -88,6 +88,7 @@ def rescore(gov_action_id: str) -> int | None:
         conflict_data   = conflict_data,
         risk_score      = risk["total"],
         risk_components = risk["components"],
+        risk            = risk,
     )
     return risk["total"]
 

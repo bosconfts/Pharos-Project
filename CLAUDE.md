@@ -113,6 +113,7 @@ python core/worker.py --init-db --count 50    # analisa e persiste
 python core/step6_backfill.py                 # backfill histórico desde Chang
 python core/step12_lifecycle.py               # refresca ratified/enacted/expired/dropped
 python core/step13_documents.py --dry-run     # remonta documentos PIL a partir do banco
+python core/step14_who_benefits.py --dry-run  # refaz o M3 e só o componente de conflito do M4
 python core/publisher.py                      # dry-run da publicação
 python core/publisher.py --publish            # submete (gasta ADA real)
 python core/publisher.py --publish --id <gid> # ancora só esta action, se elegível
@@ -148,6 +149,14 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   existe e dizendo que o pipeline era determinístico. Documento e
   `pil_doc_hash` são gravados juntos pelo `save_analysis` — o publisher
   recalcula o hash e recusa se divergir.
+- O M3 não detecta conflito de interesse — mostra quem se beneficia. O
+  "proponente" na chain é a carteira que pagou a taxa de submissão, e em geral
+  é um administrador submetendo em lote (uma carteira submeteu 39 dos 104
+  saques, para desenvolvedores diferentes). Comparar o histórico dela com o do
+  beneficiário gerou 11 acusações HIGH, 4 delas de uma carteira consigo mesma;
+  essa checagem saiu. E 98 de 112 pagamentos caem em contratos (`stake17…`),
+  de onde o dinheiro é liberado a cada fornecedor: nunca somar o que um
+  contrato já recebeu e mostrar na proposta de um fornecedor.
 - Gateway de IPFS cai. Um 504 do `ipfs.io` no `step2_anchor` já gravou dez
   actions sem resumo, sem embedding e sem documento PIL. O fetch agora tenta
   os outros gateways para o mesmo CID (o hash blake2b é conferido de qualquer

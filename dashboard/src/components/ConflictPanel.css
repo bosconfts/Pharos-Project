@@ -15,12 +15,40 @@
 }
 .panel-figure-label { font-size: 12px; color: var(--muted); }
 
-.panel-addr {
-  font-size: 11px; color: var(--muted); word-break: break-all;
-  padding-bottom: 14px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 14px;
+/* Linhas de fato: rótulo pequeno à esquerda, valor à direita. */
+.panel-row {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 10px 0; border-top: 1px solid var(--rule-soft);
+}
+.panel-row-stack { flex-direction: column; gap: 8px; }
+.panel-row-label {
+  flex-shrink: 0; min-width: 96px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted);
+}
+.panel-link { font-size: 12px; color: var(--seal); text-decoration: none; word-break: break-all; }
+.panel-link:hover { text-decoration: underline; }
+
+.payee-list { list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.payee-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.payee-amount { font-family: var(--display); font-size: 18px; color: var(--ink); }
+.payee-tag {
+  font-size: 11px; color: var(--ink-2);
+  background: var(--seal-wash); border-radius: var(--radius); padding: 1px 6px;
+}
+.payee-note {
+  margin-top: 3px;
+  font-size: 13px; line-height: 1.55; color: var(--muted); font-weight: 300;
 }
 
-.panel-verdict { font-size: 14px; line-height: 1.6; color: var(--ink-2); font-weight: 300; }
+/* Nota de método: mais discreta que o conteúdo, mas legível. */
+.panel-note {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule-soft);
+  font-size: 12px; line-height: 1.55; color: var(--muted); font-weight: 300;
+}
+.panel-note strong { font-weight: 600; color: var(--ink-2); }
+
+.finding-list { margin-top: 14px; }
 
 .finding-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
 .finding { border-left: 2px solid var(--rule); padding-left: 14px; }
@@ -37,8 +65,3 @@
 
 .finding-desc { font-size: 14px; line-height: 1.55; color: var(--ink); margin: 3px 0 5px; }
 .finding-evidence { font-size: 11px; }
-
-.disclosures { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule-soft); }
-.disclosures > .eyebrow { display: block; margin-bottom: 8px; }
-.disclosure { font-size: 13px; line-height: 1.55; color: var(--muted); font-weight: 300; }
-.disclosure-note { display: block; font-size: 12px; color: var(--muted); opacity: 0.85; margin-top: 2px; }
