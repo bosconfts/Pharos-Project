@@ -137,6 +137,24 @@ export default function ConflictPanel({ conflict }) {
         </ul>
       </div>
 
+      {/* Os pontos vêm de step11_risk_score.conflict_component — se lá mudar,
+          esta legenda tem de mudar junto. Ela nunca existiu: a página mostrava
+          o selo "HIGH" sem dizer o que separava um HIGH de um MEDIUM, nem que
+          um HIGH zerava 20 pontos do score. */}
+      {findings.length > 0 ? (
+        <p className="panel-note">
+          <strong>How findings are graded.</strong> HIGH removes all 20 points of
+          the conflict component; MEDIUM leaves 8 of 20; LOW leaves 14 of 20.
+          INFO is disclosure and costs nothing.
+        </p>
+      ) : (
+        <p className="panel-note">
+          No conflict-of-interest check runs today, so the absence of findings
+          here is not a clearance — what is recorded above is who is paid, not a
+          judgement of it.
+        </p>
+      )}
+
       {findings.length > 0 && (
         <ul className="finding-list">
           {findings.map((c, i) => (

@@ -41,6 +41,13 @@
   font-size: 13px; line-height: 1.55; color: var(--muted); font-weight: 300;
 }
 
+/* Nota de método: mais discreta que o conteúdo, mas legível. */
+.panel-note {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule-soft);
+  font-size: 12px; line-height: 1.55; color: var(--muted); font-weight: 300;
+}
+.panel-note strong { font-weight: 600; color: var(--ink-2); }
+
 .finding-list { margin-top: 14px; }
 
 .finding-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }

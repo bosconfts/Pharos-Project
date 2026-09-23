@@ -172,6 +172,9 @@ def conflict_component(action_type: str, conflicts: list | None) -> dict:
     Os pontos ficam cheios, como já ficavam para quase todas as propostas, e a
     evidência diz a verdade: não avaliado. Um achado real (HIGH/MEDIUM/LOW) de
     uma checagem futura volta a tirar pontos.
+
+    Os valores abaixo são publicados como legenda no painel "Who benefits"
+    (dashboard/src/components/ConflictPanel.jsx): mudar um exige mudar o outro.
     """
     conflicts = conflicts or []
     high = sum(1 for c in conflicts if c.get("severity") == "HIGH")
