@@ -27,6 +27,7 @@ load_dotenv()
 from step4_publish import (
     publish_on_chain, compute_document_hash, network_name,
     PIL_ENABLE_ONCHAIN, PIL_WALLET_ADDRESS, PIL_SIGNING_KEY_PATH,
+    BLOCKFROST_BASE_URL, BLOCKFROST_PROJECT_ID,
 )
 from database import get_pending_publish, set_on_chain_result
 
@@ -43,6 +44,29 @@ def preflight() -> list[str]:
     if network_name() == "unknown":
         problems.append("BLOCKFROST_BASE_URL não identifica uma rede conhecida")
     return problems
+
+
+def wait_confirmed(tx_hash: str, timeout: int = 300) -> bool:
+    """Espera a transação entrar em bloco. False se estourar o tempo."""
+    import time
+    import httpx
+
+    url     = f"{BLOCKFROST_BASE_URL}/txs/{tx_hash}"
+    headers = {"project_id": (BLOCKFROST_PROJECT_ID or "").strip()}
+    started = time.time()
+
+    print("   aguardando confirmação…", end="", flush=True)
+    while time.time() - started < timeout:
+        try:
+            if httpx.get(url, headers=headers, timeout=20).status_code == 200:
+                print(f" confirmada em {time.time() - started:.0f}s")
+                return True
+        except Exception:
+            pass
+        time.sleep(5)
+
+    print(f" não confirmou em {timeout}s — parando por aqui")
+    return False
 
 
 def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) -> dict:
@@ -133,6 +157,17 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
 
                 stats["submitted"] += 1
                 print(f"   ✅ tx {tx}")
+
+                # Cada ancoragem gasta a UTxO e devolve o troco numa nova. O
+                # BlockFrostChainContext só enxerga o que já está em bloco, então
+                # submeter a próxima antes da confirmação faria ela tentar gastar
+                # uma UTxO já consumida — sem custo, mas sem publicar. Espera.
+                if row is not pending[-1] and not wait_confirmed(tx):
+                    # Sem confirmação, a próxima gastaria uma UTxO já consumida
+                    # e falharia em sequência. Para agora: o que foi publicado
+                    # está registrado, e basta rodar de novo depois.
+                    print("   Interrompendo o lote. Rode de novo quando a rede acompanhar.")
+                    break
             else:
                 set_on_chain_result(gid, result.get("status", "error"))
                 stats["failed"] += 1
