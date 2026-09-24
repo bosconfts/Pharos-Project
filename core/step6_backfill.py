@@ -13,7 +13,7 @@ load_dotenv()
 import httpx
 from database import init_db, upsert_action, get_action, count_actions
 from step2_anchor import fetch_and_validate_anchor, extract_cip108_fields
-from step3_summarizer import generate_summaries
+from step3_summarizer import generate_summaries, CredentialError
 from pipeline import _cached_summaries, has_genuine_summary
 from step7_embeddings import embed_text
 
@@ -180,6 +180,8 @@ def process_proposal(client: httpx.Client, item: dict, verbose: bool = True) -> 
                 "full_summary":       summaries.get("full"),
                 "completeness_score": summaries.get("metadata", {}).get("completeness_score"),
             })
+        except CredentialError:
+            raise
         except Exception as e:
             if verbose: print(f"    ⚠️  summarizer: {e}")
 

@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from step1_indexer import fetch_governance_actions
+from step3_summarizer import CredentialError
 from step4_publish import network_name
 from step12_lifecycle import refresh_lifecycle
 from pipeline      import analyze_action, analyze_by_id
@@ -79,6 +80,17 @@ def run(count: int = 20, page: int = 1, reprocess: bool = False,
             if result["errors"]:
                 for e in result["errors"]:
                     print(f"    ⚠️  {e}")
+        except CredentialError as e:
+            # Sem chave válida nenhuma das seguintes será resumida. Parar aqui
+            # e sair com erro é o que faz a execução do Actions ficar vermelha —
+            # antes ela terminava verde tendo analisado tudo sem resumo nenhum.
+            print("\n" + "!" * 68)
+            print("CREDENCIAL DA API ANTHROPIC INVALIDA — nada mais sera resumido.")
+            print(f"  {e}")
+            print("Confira ANTHROPIC_API_KEY no .env e em GitHub > Settings >")
+            print("Secrets and variables > Actions. Os dois precisam ser a chave nova.")
+            print("!" * 68)
+            raise
         except Exception:
             stats["failed"] += 1
             traceback.print_exc()
@@ -107,16 +119,20 @@ if __name__ == "__main__":
 
     print("=== PIL Analysis Worker ===\n")
 
-    if args.id:
-        result = analyze_by_id(args.id, persist=True, verbose=True)
-        if result is None:
-            print(f"❌ Action '{args.id}' não encontrada na chain.")
-            sys.exit(1)
-        print(f"\n✅ {args.id} analisada.")
-    else:
-        stats = run(count=args.count, page=args.page, reprocess=args.all,
-                    skip_lifecycle=args.skip_lifecycle)
-        print(f"=== Concluído: {stats['analyzed']} analisadas · "
-              f"{stats['skipped']} já existentes · {stats['failed']} falhas ===")
-        if stats["failed"]:
-            sys.exit(1)
+    # Código 2 distingue "a chave não serve" de "uma proposta falhou" (1).
+    try:
+        if args.id:
+            result = analyze_by_id(args.id, persist=True, verbose=True)
+            if result is None:
+                print(f"❌ Action '{args.id}' não encontrada na chain.")
+                sys.exit(1)
+            print(f"\n✅ {args.id} analisada.")
+        else:
+            stats = run(count=args.count, page=args.page, reprocess=args.all,
+                        skip_lifecycle=args.skip_lifecycle)
+            print(f"=== Concluído: {stats['analyzed']} analisadas · "
+                  f"{stats['skipped']} já existentes · {stats['failed']} falhas ===")
+            if stats["failed"]:
+                sys.exit(1)
+    except CredentialError:
+        sys.exit(2)
