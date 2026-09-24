@@ -46,26 +46,34 @@ def preflight() -> list[str]:
     return problems
 
 
-def wait_confirmed(tx_hash: str, timeout: int = 300) -> bool:
-    """Espera a transação entrar em bloco. False se estourar o tempo."""
+def wait_spendable(tx_hash: str, timeout: int = 300) -> bool:
+    """Espera o troco da transação virar uma UTxO gastável do endereço.
+
+    Não basta a transação entrar em bloco: o índice de UTxOs do endereço no
+    Blockfrost atualiza depois, e é dele que o TransactionBuilder tira as
+    entradas. Esperar só o bloco fez a seguinte escolher a UTxO recém-gasta e
+    voltar com "All inputs are spent. Transaction has probably already been
+    included" — 28 segundos depois de a anterior estar confirmada.
+    """
     import time
     import httpx
 
-    url     = f"{BLOCKFROST_BASE_URL}/txs/{tx_hash}"
+    url     = f"{BLOCKFROST_BASE_URL}/addresses/{PIL_WALLET_ADDRESS}/utxos"
     headers = {"project_id": (BLOCKFROST_PROJECT_ID or "").strip()}
     started = time.time()
 
-    print("   aguardando confirmação…", end="", flush=True)
+    print("   aguardando o troco ficar gastável…", end="", flush=True)
     while time.time() - started < timeout:
         try:
-            if httpx.get(url, headers=headers, timeout=20).status_code == 200:
-                print(f" confirmada em {time.time() - started:.0f}s")
+            resp = httpx.get(url, headers=headers, timeout=20)
+            if resp.status_code == 200 and any(u["tx_hash"] == tx_hash for u in resp.json()):
+                print(f" pronto em {time.time() - started:.0f}s")
                 return True
         except Exception:
             pass
         time.sleep(5)
 
-    print(f" não confirmou em {timeout}s — parando por aqui")
+    print(f" não apareceu em {timeout}s — parando por aqui")
     return False
 
 
@@ -162,7 +170,7 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
                 # BlockFrostChainContext só enxerga o que já está em bloco, então
                 # submeter a próxima antes da confirmação faria ela tentar gastar
                 # uma UTxO já consumida — sem custo, mas sem publicar. Espera.
-                if row is not pending[-1] and not wait_confirmed(tx):
+                if row is not pending[-1] and not wait_spendable(tx):
                     # Sem confirmação, a próxima gastaria uma UTxO já consumida
                     # e falharia em sequência. Para agora: o que foi publicado
                     # está registrado, e basta rodar de novo depois.
