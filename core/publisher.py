@@ -172,6 +172,13 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
                 set_on_chain_result(gid, result.get("status", "error"))
                 stats["failed"] += 1
                 print(f"   ❌ {result.get('status')}: {result.get('reason')}")
+                # Uma submissão que falha costuma significar que a carteira não
+                # avançou de estado, e seguir em frente faz a próxima falhar
+                # igual — foi assim que um lote terminou com 24 falhas em
+                # sequência, todas as quais montavam sem erro depois. O motivo
+                # fica como última linha na tela, que é onde ele é lido.
+                print("   Interrompendo o lote. Nada foi pago por esta; rode de novo.")
+                break
 
         # SystemExit herda de BaseException, então o abort acima passa por aqui
         # sem ser capturado — que é exatamente a intenção.
