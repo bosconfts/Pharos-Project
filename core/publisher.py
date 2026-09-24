@@ -27,6 +27,7 @@ load_dotenv()
 from step4_publish import (
     publish_on_chain, compute_document_hash, network_name,
     PIL_ENABLE_ONCHAIN, PIL_WALLET_ADDRESS, PIL_SIGNING_KEY_PATH,
+    BLOCKFROST_BASE_URL, BLOCKFROST_PROJECT_ID,
 )
 from database import get_pending_publish, set_on_chain_result
 
@@ -43,6 +44,37 @@ def preflight() -> list[str]:
     if network_name() == "unknown":
         problems.append("BLOCKFROST_BASE_URL não identifica uma rede conhecida")
     return problems
+
+
+def wait_spendable(tx_hash: str, timeout: int = 300) -> bool:
+    """Espera o troco da transação virar uma UTxO gastável do endereço.
+
+    Não basta a transação entrar em bloco: o índice de UTxOs do endereço no
+    Blockfrost atualiza depois, e é dele que o TransactionBuilder tira as
+    entradas. Esperar só o bloco fez a seguinte escolher a UTxO recém-gasta e
+    voltar com "All inputs are spent. Transaction has probably already been
+    included" — 28 segundos depois de a anterior estar confirmada.
+    """
+    import time
+    import httpx
+
+    url     = f"{BLOCKFROST_BASE_URL}/addresses/{PIL_WALLET_ADDRESS}/utxos"
+    headers = {"project_id": (BLOCKFROST_PROJECT_ID or "").strip()}
+    started = time.time()
+
+    print("   aguardando o troco ficar gastável…", end="", flush=True)
+    while time.time() - started < timeout:
+        try:
+            resp = httpx.get(url, headers=headers, timeout=20)
+            if resp.status_code == 200 and any(u["tx_hash"] == tx_hash for u in resp.json()):
+                print(f" pronto em {time.time() - started:.0f}s")
+                return True
+        except Exception:
+            pass
+        time.sleep(5)
+
+    print(f" não apareceu em {timeout}s — parando por aqui")
+    return False
 
 
 def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) -> dict:
@@ -133,10 +165,28 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
 
                 stats["submitted"] += 1
                 print(f"   ✅ tx {tx}")
+
+                # Cada ancoragem gasta a UTxO e devolve o troco numa nova. O
+                # BlockFrostChainContext só enxerga o que já está em bloco, então
+                # submeter a próxima antes da confirmação faria ela tentar gastar
+                # uma UTxO já consumida — sem custo, mas sem publicar. Espera.
+                if row is not pending[-1] and not wait_spendable(tx):
+                    # Sem confirmação, a próxima gastaria uma UTxO já consumida
+                    # e falharia em sequência. Para agora: o que foi publicado
+                    # está registrado, e basta rodar de novo depois.
+                    print("   Interrompendo o lote. Rode de novo quando a rede acompanhar.")
+                    break
             else:
                 set_on_chain_result(gid, result.get("status", "error"))
                 stats["failed"] += 1
                 print(f"   ❌ {result.get('status')}: {result.get('reason')}")
+                # Uma submissão que falha costuma significar que a carteira não
+                # avançou de estado, e seguir em frente faz a próxima falhar
+                # igual — foi assim que um lote terminou com 24 falhas em
+                # sequência, todas as quais montavam sem erro depois. O motivo
+                # fica como última linha na tela, que é onde ele é lido.
+                print("   Interrompendo o lote. Nada foi pago por esta; rode de novo.")
+                break
 
         # SystemExit herda de BaseException, então o abort acima passa por aqui
         # sem ser capturado — que é exatamente a intenção.
