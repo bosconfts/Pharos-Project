@@ -188,7 +188,7 @@ def get_all_actions(limit: int = 100, offset: int = 0) -> list[dict]:
     cur.execute(
         f"""SELECT gov_action_id, action_type, title, one_liner,
                   completeness_score, ratified_epoch, enacted_epoch,
-                  expired_epoch, dropped_epoch, processed_at,
+                  expired_epoch, dropped_epoch, epoch_expiry, processed_at,
                   risk_score, withdrawal_amount
            FROM governance_actions
            WHERE {GENUINE_SUMMARY_SQL}

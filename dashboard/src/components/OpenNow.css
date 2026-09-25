@@ -1,0 +1,60 @@
+/* A faixa fica entre o cabeçalho e o índice: é a primeira coisa depois da
+   apresentação, porque é a primeira pergunta de quem vem votar. */
+.open-band {
+  background: var(--seal-wash);
+  border-bottom: 1px solid var(--rule);
+}
+
+.open-inner {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 18px var(--gap) 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.open-head { display: flex; align-items: baseline; gap: 8px; }
+.open-count {
+  font-family: var(--display);
+  font-size: 22px; line-height: 1; color: var(--seal);
+}
+.open-head .eyebrow { color: var(--seal); }
+
+.open-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px 20px;
+}
+
+.open-item {
+  width: 100%;
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.15s;
+}
+.open-item:hover { border-color: var(--seal); }
+.open-item.is-active { border-color: var(--seal); box-shadow: inset 2px 0 0 var(--seal); }
+
+.open-title {
+  flex-grow: 1; min-width: 0;
+  font-size: 14px; line-height: 1.35; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.open-meta { display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
+
+.open-when { font-size: 11px; color: var(--muted); white-space: nowrap; }
+/* Vermelho e tamanho: quem lê a cor e quem não lê chegam à mesma conclusão. */
+.open-when.is-urgent { color: var(--risk-high); font-weight: 600; }
+
+.open-score { font-family: var(--display); font-size: 16px; color: var(--ink); }
+.open-score-unit { font-size: 10px; color: var(--muted); }

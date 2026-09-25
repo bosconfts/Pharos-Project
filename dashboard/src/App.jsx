@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchStats, fetchHistory, fetchLive, fetchAnalysis, ApiError } from "./api";
 import ActionList from "./components/ActionList";
 import ActionDetail from "./components/ActionDetail";
+import OpenNow, { isOpen } from "./components/OpenNow";
 import "./App.css";
 
 // Sem acento e sem caixa: "decisao" acha "Decisão", "eternl" acha "Eternl".
@@ -22,6 +23,8 @@ function matches(action, query) {
 export default function App() {
   const [stats, setStats]       = useState(null);
   const [query, setQuery]       = useState("");
+  // Guardado à parte da lista: a faixa não some quando se troca para "On chain".
+  const [openNow, setOpenNow]   = useState([]);
   const [actions, setActions]   = useState([]);
   const [listState, setList]    = useState("loading");
   const [selected, setSelected] = useState(null);
@@ -52,6 +55,7 @@ export default function App() {
       // 200 é o teto da API; passando disso, a busca precisa ir para o servidor.
       const data = mode === "analysed" ? await fetchHistory(200) : await fetchLive(20);
       setActions(data.actions || []);
+      if (mode === "analysed") setOpenNow((data.actions || []).filter(isOpen));
       setList("ok");
     } catch {
       setActions([]);
@@ -102,6 +106,13 @@ export default function App() {
           </dl>
         </div>
       </header>
+
+      <OpenNow
+        actions={openNow}
+        epoch={stats ? stats.epoch : null}
+        selected={selected}
+        onSelect={selectAction}
+      />
 
       <main className="main">
         <aside className="index-pane">

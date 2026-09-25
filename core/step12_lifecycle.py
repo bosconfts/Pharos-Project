@@ -42,12 +42,13 @@ def pending_actions() -> list[dict]:
     conn = get_conn()
     cur  = conn.cursor()
     cur.execute(f"""
-        SELECT gov_action_id, tx_hash, cert_index
+        SELECT gov_action_id, tx_hash, cert_index, on_chain_tx
         FROM governance_actions
         WHERE {' AND '.join(f'{f} IS NULL' for f in EPOCH_FIELDS)}
         ORDER BY epoch_expiry
     """)
-    rows = [{"gov_action_id": r[0], "tx_hash": r[1], "cert_index": r[2]} for r in cur.fetchall()]
+    rows = [{"gov_action_id": r[0], "tx_hash": r[1], "cert_index": r[2], "on_chain_tx": r[3]}
+            for r in cur.fetchall()]
     cur.close()
     conn.close()
     return rows
@@ -95,7 +96,7 @@ def rescore(gov_action_id: str) -> int | None:
 
 def refresh_lifecycle(dry_run: bool = False, verbose: bool = True) -> dict:
     log   = print if verbose else (lambda *a, **k: None)
-    stats = {"checked": 0, "updated": 0, "rescored": 0, "failed": 0}
+    stats = {"checked": 0, "updated": 0, "rescored": 0, "frozen": 0, "failed": 0}
 
     pending = pending_actions()
     log(f"{len(pending)} action(s) sem desfecho registrado.\n")
@@ -129,6 +130,16 @@ def refresh_lifecycle(dry_run: bool = False, verbose: bool = True) -> dict:
 
             update_lifecycle(gid, epochs)
             stats["updated"] += 1
+
+            # O desfecho é fato da chain e entra sempre. O score, não: uma
+            # análise ancorada é o documento que está no bloco, e mexer no
+            # número aqui faria o site contradizer o hash que qualquer um pode
+            # conferir. Score novo só sob um método novo, em análise nova.
+            if row.get("on_chain_tx"):
+                stats["frozen"] += 1
+                log(f"  ✅ {gid[:24]}… → {outcome} · score mantido (ancorada)")
+                continue
+
             total = rescore(gid)
             if total is not None:
                 stats["rescored"] += 1

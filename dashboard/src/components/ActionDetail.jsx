@@ -19,6 +19,7 @@ export default function ActionDetail({ analysis }) {
   const dr        = sim?.delivery_rate;
   const similar   = sim?.similar_proposals || [];
   const onChain   = analysis.on_chain;
+  const method    = analysis.pil_document?.pilAnalysis?.pilVersion;
   const risk      = analysis.risk_score;
   const full      = summaries.full || {};
 
@@ -146,6 +147,15 @@ export default function ActionDetail({ analysis }) {
             <div>
               <dt>This analysis</dt>
               <dd className="mono">{analysis.pil_document_hash}</dd>
+            </div>
+          )}
+          {/* Qual método produziu este número. Uma análise ancorada nunca é
+              recalculada — o documento no bloco é o registro — então versões
+              diferentes convivem, e o leitor precisa saber qual está lendo. */}
+          {method && (
+            <div>
+              <dt>Method</dt>
+              <dd>PIL v{method}</dd>
             </div>
           )}
           <div>

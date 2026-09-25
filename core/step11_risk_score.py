@@ -14,6 +14,13 @@ from step8_similarity import find_similar, delivery_rate
 
 NCL_LOVELACE = 300_000_000_000_000  # 300 million ADA
 
+# Quantas propostas comparáveis precisam ter terminado para a taxa de entrega
+# valer alguma coisa. Os componentes 1 e 6 somam 35 dos 100 pontos e saem os
+# dois da mesma taxa: com uma única comparável aprovada, a taxa dá 100% e a
+# proposta ganhava 35 pontos cheios a partir de uma amostra de tamanho 1 —
+# 26 propostas da base estavam nessa situação. Abaixo disto, neutro.
+MIN_COMPARABLES = 3
+
 
 def compute_risk_score(record: dict, conflicts: list | None = None, similar: list | None = None) -> dict:
     """
@@ -35,13 +42,15 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
 
     # ── 1. Proposer Track Record (25 pts) ─────────────────────────────────────
     # Proxy: delivery rate of semantically similar proposals
-    if dr["total"] == 0:
+    concluded = dr["delivered"] + dr["expired"]
+    if concluded < MIN_COMPARABLES:
         c1 = 13
-        c1_ev = "No historical data for similar proposals (neutral)"
+        c1_ev = (f"Only {concluded} comparable proposal(s) have concluded — "
+                 f"too few to judge (neutral)")
     else:
         rate = dr["rate"] if dr["rate"] is not None else 50
         c1   = round(rate / 100 * 25)
-        c1_ev = f"{dr['delivered']}/{dr['total']} similar proposals delivered ({rate}%)"
+        c1_ev = f"{dr['delivered']}/{concluded} similar proposals delivered ({rate}%)"
     components["proposer_track_record"] = {
         "label":    "Proposer Track Record",
         "score":    c1,
@@ -124,13 +133,14 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
     }
 
     # ── 6. Historical Precedent (10 pts) ──────────────────────────────────────
-    if dr["total"] == 0:
+    if concluded < MIN_COMPARABLES:
         c6    = 5
-        c6_ev = "No similar proposals in history (neutral)"
+        c6_ev = (f"{dr['total']} comparable proposal(s) found, {concluded} concluded — "
+                 f"too few to judge (neutral)")
     else:
         rate = dr["rate"] if dr["rate"] is not None else 50
         c6   = round(rate / 100 * 10)
-        c6_ev = f"{dr['total']} similar proposals — {rate}% delivery rate"
+        c6_ev = f"{concluded} concluded comparable proposals — {rate}% delivery rate"
     components["historical_precedent"] = {
         "label":    "Historical Precedent",
         "score":    c6,
