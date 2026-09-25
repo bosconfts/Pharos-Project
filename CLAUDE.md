@@ -53,8 +53,9 @@ faz de graça.
 a Vercel instala, e torch não caberia no limite de tamanho de função);
 `requirements-worker.txt` inclui aquele e soma o pipeline pesado.
 
-A chave Anthropic anterior, criada na conta pessoal, foi exposta e **deve ser
-revogada**. Toda chave nova do projeto sai da conta Anthropic acima.
+A chave Anthropic anterior ("PIL Transparence Layer", final `zAAA`, criada na
+conta pessoal) foi exposta e **foi revogada em 25/09/2026**. Toda chave nova do
+projeto sai da conta Anthropic acima.
 
 Autenticação Anthropic: **API key estática**. Vale reavaliar — o worker migrou
 para o GitHub Actions, que É um provedor de identidade suportado pela federação
