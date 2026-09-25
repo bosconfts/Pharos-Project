@@ -63,9 +63,13 @@ def _findings(conflict: dict) -> int:
 def run(dry_run: bool = False) -> dict:
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    # Ancorada fica de fora: o documento no bloco é o registro, e reescrever o
+    # score ou os conflitos aqui faria o site contradizer o hash que qualquer
+    # um pode conferir.
     cur.execute("""
         SELECT * FROM governance_actions
         WHERE action_type = 'TreasuryWithdrawals' AND analysis IS NOT NULL
+          AND on_chain_tx IS NULL
         ORDER BY epoch_expiry
     """)
     rows = cur.fetchall()

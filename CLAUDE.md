@@ -160,6 +160,16 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   essa checagem saiu. E 98 de 112 pagamentos caem em contratos (`stake17…`),
   de onde o dinheiro é liberado a cada fornecedor: nunca somar o que um
   contrato já recebeu e mostrar na proposta de um fornecedor.
+- **Análise ancorada não muda de nota.** O documento no bloco é o registro, e
+  recalcular o score de uma linha ancorada faria o site contradizer o hash que
+  qualquer um pode conferir. `step12_lifecycle` atualiza o desfecho (fato da
+  chain) mas pula o rescore dessas; `step14_who_benefits` as ignora. Método
+  novo vale para análise nova: o `PIL_VERSION` sobe e a página mostra qual
+  versão produziu cada número.
+- A taxa de entrega do M2 exige `MIN_COMPARABLES` comparáveis **concluídas**.
+  Os componentes 1 e 6 somam 35 pontos e saem os dois da mesma taxa: com uma
+  única comparável aprovada, 35 pontos cheios saíam de uma amostra de tamanho
+  um, em 26 propostas. Pendentes não contam como amostra.
 - Chave de API que não serve derruba a execução (`CredentialError`), em vez de
   virar erro de etapa. Quando o crédito acabou, cada proposta foi gravada como
   analisada-com-erro e o worker terminou verde — 73 linhas viraram o título
