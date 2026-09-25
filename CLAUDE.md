@@ -166,6 +166,10 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   chain) mas pula o rescore dessas; `step14_who_benefits` as ignora. Método
   novo vale para análise nova: o `PIL_VERSION` sobe e a página mostra qual
   versão produziu cada número.
+- O score de 0 a 100 varia muito menos do que aparenta: 50 pontos são quase
+  constantes (conflito dá 20 a todos, Scope Clarity a 97%, Documentação a 87%),
+  e a variação real sai de dois sinais, um deles contado duas vezes. Medição e
+  caminhos em `docs/m4-score-audit.md` — decisão pendente.
 - A taxa de entrega do M2 exige `MIN_COMPARABLES` comparáveis **concluídas**.
   Os componentes 1 e 6 somam 35 pontos e saem os dois da mesma taxa: com uma
   única comparável aprovada, 35 pontos cheios saíam de uma amostra de tamanho
