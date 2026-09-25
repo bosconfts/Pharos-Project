@@ -13,7 +13,7 @@ const TYPE_LABEL = {
   UpdateCommittee:     "Committee update",
 };
 
-export default function ActionDetail({ analysis }) {
+export default function ActionDetail({ analysis, onMethod }) {
   const summaries = analysis.summaries || {};
   const sim       = analysis.similarity;
   const dr        = sim?.delivery_rate;
@@ -155,7 +155,12 @@ export default function ActionDetail({ analysis }) {
           {method && (
             <div>
               <dt>Method</dt>
-              <dd>PIL v{method}</dd>
+              <dd>
+                PIL v{method} ·{" "}
+                <button className="method-link" onClick={onMethod}>
+                  how scores are made
+                </button>
+              </dd>
             </div>
           )}
           <div>

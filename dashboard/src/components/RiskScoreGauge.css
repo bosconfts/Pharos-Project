@@ -1,6 +1,6 @@
 /* ── Bloco de veredito ─────────────────────────────────────────────────────
    O elemento de assinatura. Um numeral em fonte de display, o veredito em
-   linguagem simples ao lado, e os seis componentes como linhas de razão com
+   linguagem simples ao lado, e os componentes como linhas de razão com
    pontilhado ligando rótulo a valor — a gramática de um registro impresso.  */
 .verdict {
   border: 1px solid var(--rule);
