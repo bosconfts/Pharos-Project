@@ -17,7 +17,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from step1_indexer import fetch_governance_actions
+import httpx
+
+from step1_indexer import (
+    fetch_governance_actions, BLOCKFROST_BASE_URL, BLOCKFROST_PROJECT_ID,
+)
 from step4_publish import network_name
 from database      import get_all_actions, count_analyzed, get_analysis, get_conn
 
@@ -53,12 +57,31 @@ def health():
         raise HTTPException(status_code=503, detail=f"database unavailable: {e}")
 
 
+def _current_epoch() -> int | None:
+    """Epoch atual da chain, ou None se o Blockfrost não responder.
+
+    Sem ele a página sabe que uma proposta expira no epoch 661, o que não diz
+    nada a quem vai votar. Com ele, vira "fecha em ~20 dias".
+    """
+    try:
+        resp = httpx.get(
+            f"{BLOCKFROST_BASE_URL}/epochs/latest",
+            headers={"project_id": (BLOCKFROST_PROJECT_ID or "").strip()},
+            timeout=6,
+        )
+        return resp.json().get("epoch") if resp.status_code == 200 else None
+    except Exception:
+        return None
+
+
 @app.get("/stats")
 def stats():
+    # O epoch é informativo: uma falha dele não pode derrubar o resto.
     try:
-        return {"total_analyzed": count_analyzed(), "network": NETWORK}
+        return {"total_analyzed": count_analyzed(), "network": NETWORK,
+                "epoch": _current_epoch()}
     except Exception:
-        return {"total_analyzed": 0, "network": NETWORK}
+        return {"total_analyzed": 0, "network": NETWORK, "epoch": None}
 
 
 @app.get("/governance/history")
