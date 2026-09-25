@@ -13,6 +13,18 @@ load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 
+class CredentialError(RuntimeError):
+    """A chave da API não serve — recusada, sem permissão ou sem crédito.
+
+    Diferente de um erro na proposta. O pipeline registra a etapa como "error"
+    e segue em frente, o que é certo para um documento malformado e errado
+    aqui: sem chave válida nenhuma proposta será resumida, e o worker
+    terminaria verde marcando uma linha após a outra como analisada-com-erro —
+    foi exatamente assim que 73 linhas passaram por prontas quando o crédito
+    acabou. Esta exceção sobe até o topo e derruba a execução.
+    """
+
+
 def generate_summaries(fields: dict, action_type: str, deposit: int) -> dict:
     if ANTHROPIC_API_KEY and ANTHROPIC_API_KEY not in ("sk-ant-...", ""):
         return _summarize_with_claude(fields, action_type, deposit)
@@ -194,11 +206,21 @@ Respond ONLY with valid JSON, no markdown, in this exact format:
 }}"""
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
+        raise CredentialError(f"chave recusada pela API: {e}") from e
+    except anthropic.BadRequestError as e:
+        # Crédito acabado não é erro de conteúdo: nenhuma proposta vai ser
+        # resumida enquanto não for resolvido, e tratar como falha da proposta
+        # deixaria o worker terminar verde marcando linha por linha.
+        if "credit balance" in str(e).lower():
+            raise CredentialError(f"sem crédito na conta Anthropic: {e}") from e
+        raise
 
     _log_usage(message.usage)
 

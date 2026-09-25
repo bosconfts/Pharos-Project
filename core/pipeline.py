@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from step1_indexer     import fetch_governance_actions, GovernanceAction
 from step2_anchor      import fetch_and_validate_anchor, extract_cip108_fields
-from step3_summarizer  import generate_summaries
+from step3_summarizer  import generate_summaries, CredentialError
 from step4_publish     import build_pil_document, compute_document_hash
 from step7_embeddings  import embed_text
 from step8_similarity  import analyze_similarity, find_similar
@@ -153,6 +153,10 @@ def analyze_action(action: GovernanceAction, persist: bool = True, verbose: bool
                     summaries = generate_summaries(fields, action.action_type, action.deposit)
                     result["summaries"]              = summaries
                     result["steps"]["s3_summarizer"] = "ok"
+                except CredentialError:
+                    # Não é falha desta proposta: é a chave. Deixar passar aqui
+                    # marcaria linha por linha como analisada-com-erro.
+                    raise
                 except Exception as e:
                     result["errors"].append(f"S3 error: {e}")
                     result["steps"]["s3_summarizer"] = "error"

@@ -117,6 +117,7 @@ python core/step14_who_benefits.py --dry-run  # refaz o M3 e só o componente de
 python core/publisher.py                      # dry-run da publicação
 python core/publisher.py --publish            # submete (gasta ADA real)
 python core/publisher.py --publish --id <gid> # ancora só esta action, se elegível
+python -m unittest discover tests             # testes (sem rede, sem banco)
 python core/step5_api.py                      # API em :8000
 cd dashboard && npm run dev                   # dashboard em :5173
 ```
@@ -131,6 +132,8 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   `pipeline.py` orquestra; os `step*` são as unidades.
 - `run_m1.py` é CLI de desenvolvimento legado — o caminho de produção é
   `worker.py`.
+- Testes em `tests/`, com `unittest` da biblioteca padrão — sem pytest, sem
+  dependência nova. Precisam rodar sem rede e sem banco.
 
 ## Armadilhas conhecidas
 
@@ -157,6 +160,11 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   essa checagem saiu. E 98 de 112 pagamentos caem em contratos (`stake17…`),
   de onde o dinheiro é liberado a cada fornecedor: nunca somar o que um
   contrato já recebeu e mostrar na proposta de um fornecedor.
+- Chave de API que não serve derruba a execução (`CredentialError`), em vez de
+  virar erro de etapa. Quando o crédito acabou, cada proposta foi gravada como
+  analisada-com-erro e o worker terminou verde — 73 linhas viraram o título
+  copiado sem ninguém ser avisado. Um 400 comum continua sendo falha só
+  daquela proposta.
 - Gateway de IPFS cai. Um 504 do `ipfs.io` no `step2_anchor` já gravou dez
   actions sem resumo, sem embedding e sem documento PIL. O fetch agora tenta
   os outros gateways para o mesmo CID (o hash blake2b é conferido de qualquer
