@@ -3,6 +3,7 @@ import { fetchStats, fetchHistory, fetchLive, fetchAnalysis, ApiError } from "./
 import ActionList from "./components/ActionList";
 import ActionDetail from "./components/ActionDetail";
 import OpenNow, { isOpen } from "./components/OpenNow";
+import ScoreMethod from "./components/ScoreMethod";
 import "./App.css";
 
 // Sem acento e sem caixa: "decisao" acha "Decisão", "eternl" acha "Eternl".
@@ -31,6 +32,10 @@ export default function App() {
   const [analysis, setAnalysis] = useState(null);
   const [detail, setDetail]     = useState("idle");
   const [tab, setTab]           = useState("analysed");
+  // Abre direto por link (pharosgov.io/#how-scored), para poder ser citada.
+  const [method, setMethod]     = useState(
+    () => typeof window !== "undefined" && window.location.hash === "#how-scored"
+  );
 
   useEffect(() => {
     fetchStats().then(setStats).catch(() => setStats(null));
@@ -61,6 +66,15 @@ export default function App() {
       setActions([]);
       setList("offline");
     }
+  }
+
+  // Aberta de dois lugares (o topo e o selo de versão de cada proposta): nos
+  // dois, o leitor precisa ver a seção, não só saber que ela abriu lá em cima.
+  function showMethod() {
+    setMethod(true);
+    requestAnimationFrame(() =>
+      document.getElementById("how-scored")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
   }
 
   async function selectAction(id) {
@@ -101,11 +115,18 @@ export default function App() {
             </div>
             <div>
               <dt>Method</dt>
-              <dd>Open pipeline · anchored record</dd>
+              <dd>
+                Open pipeline · anchored record ·{" "}
+                <button className="method-link" onClick={showMethod}>
+                  How the score works
+                </button>
+              </dd>
             </div>
           </dl>
         </div>
       </header>
+
+      {method && <ScoreMethod onClose={() => setMethod(false)} />}
 
       <OpenNow
         actions={openNow}
@@ -193,7 +214,7 @@ export default function App() {
             </div>
           )}
 
-          {detail === "ok" && analysis && <ActionDetail analysis={analysis} />}
+          {detail === "ok" && analysis && <ActionDetail analysis={analysis} onMethod={showMethod} />}
 
           {detail === "idle" && (
             <div className="state">
