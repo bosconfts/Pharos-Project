@@ -53,8 +53,9 @@ faz de graça.
 a Vercel instala, e torch não caberia no limite de tamanho de função);
 `requirements-worker.txt` inclui aquele e soma o pipeline pesado.
 
-A chave Anthropic anterior, criada na conta pessoal, foi exposta e **deve ser
-revogada**. Toda chave nova do projeto sai da conta Anthropic acima.
+A chave Anthropic anterior ("PIL Transparence Layer", final `zAAA`, criada na
+conta pessoal) foi exposta e **foi revogada em 25/09/2026**. Toda chave nova do
+projeto sai da conta Anthropic acima.
 
 Autenticação Anthropic: **API key estática**. Vale reavaliar — o worker migrou
 para o GitHub Actions, que É um provedor de identidade suportado pela federação
@@ -166,10 +167,12 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   chain) mas pula o rescore dessas; `step14_who_benefits` as ignora. Método
   novo vale para análise nova: o `PIL_VERSION` sobe e a página mostra qual
   versão produziu cada número.
-- O score de 0 a 100 varia muito menos do que aparenta: 50 pontos são quase
-  constantes (conflito dá 20 a todos, Scope Clarity a 97%, Documentação a 87%),
-  e a variação real sai de dois sinais, um deles contado duas vezes. Medição e
-  caminhos em `docs/m4-score-audit.md` — decisão pendente.
+- O score só tem os sinais que discriminam (método 1.2.0): entrega de
+  similares e tamanho do saque. O 1.1.0 somava seis componentes, e 50 dos 100
+  pontos eram quase constantes. Sinal que não se aplica sai da conta — não
+  voltar a dar pontos cheios por "não se aplica", que é o que inflava a nota.
+  Medição e decisão em `docs/m4-score-audit.md`. Análises ancoradas no 1.1.0
+  seguem com seis componentes, e o código de conflito fica só para elas.
 - A taxa de entrega do M2 exige `MIN_COMPARABLES` comparáveis **concluídas**.
   Os componentes 1 e 6 somam 35 pontos e saem os dois da mesma taxa: com uma
   única comparável aprovada, 35 pontos cheios saíam de uma amostra de tamanho

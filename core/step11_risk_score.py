@@ -1,7 +1,27 @@
 """
 Step 11 — Risk Score Engine (M4)
-Computes an auditable 0–100 score across 6 components.
-Higher score = lower risk / better quality proposal.
+Computes an auditable 0–100 score from the signals that actually separate one
+proposal from another. Higher score = lower risk.
+
+Método 1.2.0. O anterior somava seis componentes, e 50 dos 100 pontos eram
+quase constantes: Conflict of Interest dava 20 a todos (nenhuma checagem roda),
+Scope Clarity dava nota cheia a 97% das propostas e Documentation Quality a
+87%. A taxa de entrega de similares entrava duas vezes, com dois nomes. As
+notas iam de 50 a 100 e nenhuma proposta jamais chegou a HIGH RISK.
+
+Ficaram os dois sinais que medem algo (docs/m4-score-audit.md):
+
+  - entrega de propostas similares — 60 pontos, ou 100 quando o saque não se
+    aplica;
+  - tamanho do saque frente ao Net Change Limit — 40 pontos, só em saque de
+    tesouro.
+
+Sinal que não se aplica sai da conta, em vez de dar pontos de graça: uma
+InfoAction é julgada só pelo histórico. Sem amostra suficiente, o sinal fica no
+meio da escala, e uma proposta sem nada a dizer cai em MEDIUM, não em LOW.
+
+Análises ancoradas com o método anterior continuam com seis componentes — o
+documento no bloco é o registro. Ver "Armadilhas conhecidas" no CLAUDE.md.
 """
 import os
 import sys
@@ -15,11 +35,17 @@ from step8_similarity import find_similar, delivery_rate
 NCL_LOVELACE = 300_000_000_000_000  # 300 million ADA
 
 # Quantas propostas comparáveis precisam ter terminado para a taxa de entrega
-# valer alguma coisa. Os componentes 1 e 6 somam 35 dos 100 pontos e saem os
-# dois da mesma taxa: com uma única comparável aprovada, a taxa dá 100% e a
-# proposta ganhava 35 pontos cheios a partir de uma amostra de tamanho 1 —
+# valer alguma coisa. Com uma única comparável aprovada a taxa dá 100%, e a
+# proposta ganhava os pontos cheios a partir de uma amostra de tamanho 1 —
 # 26 propostas da base estavam nessa situação. Abaixo disto, neutro.
 MIN_COMPARABLES = 3
+
+DELIVERY_MAX = 60   # 100 quando o saque não se aplica
+TREASURY_MAX = 40
+
+# Faixas de % do NCL → fração dos pontos do saque. As mesmas faixas do método
+# anterior (15/12/8/4/0 de 15), agora sobre 40.
+TREASURY_BANDS = ((1, 40), (3, 32), (7, 21), (15, 11))
 
 
 def compute_risk_score(record: dict, conflicts: list | None = None, similar: list | None = None) -> dict:
@@ -27,129 +53,64 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
     Compute M4 Risk Score for a governance action record.
     Args:
         record:    row from governance_actions table (dict)
-        conflicts: output of detect_conflicts (list of conflict dicts)
+        conflicts: output of detect_conflicts — not scored: no conflict check
+                   runs today, and M3 shows who benefits instead of judging it
         similar:   output of find_similar (list of similar proposal dicts)
     Returns dict with total (0-100), level, and per-component breakdown.
     """
-    if conflicts is None:
-        conflicts = []
     if similar is None:
         similar = find_similar(record.get("gov_action_id", ""), top_n=5)
 
-    dr          = delivery_rate(similar)
-    action_type = record.get("action_type", "")
+    is_treasury = record.get("action_type") == "TreasuryWithdrawals"
     components  = {}
-
-    # ── 1. Proposer Track Record (25 pts) ─────────────────────────────────────
-    # Proxy: delivery rate of semantically similar proposals
-    concluded = dr["delivered"] + dr["expired"]
-    if concluded < MIN_COMPARABLES:
-        c1 = 13
-        c1_ev = (f"Only {concluded} comparable proposal(s) have concluded — "
-                 f"too few to judge (neutral)")
-    else:
-        rate = dr["rate"] if dr["rate"] is not None else 50
-        c1   = round(rate / 100 * 25)
-        c1_ev = f"{dr['delivered']}/{concluded} similar proposals delivered ({rate}%)"
-    components["proposer_track_record"] = {
-        "label":    "Proposer Track Record",
-        "score":    c1,
-        "max":      25,
-        "weight":   "25%",
-        "evidence": c1_ev,
-    }
-
-    # ── 2. Scope Clarity (20 pts) ─────────────────────────────────────────────
-    c2      = 0
-    c2_tags = []
-    if record.get("title") and len(record["title"]) > 10:
-        c2 += 5; c2_tags.append("Title ✓")
-    else:
-        c2_tags.append("Title ✗")
-    if record.get("abstract") and len(record["abstract"]) > 100:
-        c2 += 5; c2_tags.append("Abstract ✓")
-    else:
-        c2_tags.append("Abstract ✗")
-    if record.get("motivation") and len(record["motivation"]) > 50:
-        c2 += 5; c2_tags.append("Motivation ✓")
-    else:
-        c2_tags.append("Motivation ✗")
-    if record.get("rationale") and len(record["rationale"]) > 50:
-        c2 += 5; c2_tags.append("Rationale ✓")
-    else:
-        c2_tags.append("Rationale ✗")
-    components["scope_clarity"] = {
-        "label":    "Scope Clarity",
-        "score":    c2,
-        "max":      20,
-        "weight":   "20%",
-        "evidence": "  ·  ".join(c2_tags),
-    }
-
-    # ── 3. Conflict of Interest (20 pts) ──────────────────────────────────────
-    components["conflict_of_interest"] = conflict_component(action_type, conflicts)
-
-    # ── 4. Treasury Value (15 pts) ────────────────────────────────────────────
-    if action_type != "TreasuryWithdrawals":
-        c4    = 15
-        c4_ev = "Not a treasury withdrawal"
-    else:
-        lovelace = record.get("withdrawal_amount") or 0
-        if lovelace > 0:
-            pct = lovelace / NCL_LOVELACE * 100
-            if   pct < 1:   c4 = 15
-            elif pct < 3:   c4 = 12
-            elif pct < 7:   c4 = 8
-            elif pct < 15:  c4 = 4
-            else:           c4 = 0
-            c4_ev = f"{pct:.2f}% of NCL (300M ADA limit)"
-        else:
-            c4    = 8
-            c4_ev = "Withdrawal amount unknown (neutral)"
-    components["treasury_value"] = {
-        "label":    "Treasury Value",
-        "score":    c4,
-        "max":      15,
-        "weight":   "15%",
-        "evidence": c4_ev,
-    }
-
-    # ── 5. Documentation Quality (10 pts) ─────────────────────────────────────
-    words = sum(
-        len((record.get(f) or "").split())
-        for f in ["abstract", "motivation", "rationale"]
-    )
-    if   words > 500: c5 = 10
-    elif words > 200: c5 = 7
-    elif words > 100: c5 = 4
-    elif words > 20:  c5 = 2
-    else:             c5 = 0
-    components["documentation_quality"] = {
-        "label":    "Documentation Quality",
-        "score":    c5,
-        "max":      10,
-        "weight":   "10%",
-        "evidence": f"{words} words across abstract, motivation and rationale",
-    }
-
-    # ── 6. Historical Precedent (10 pts) ──────────────────────────────────────
-    if concluded < MIN_COMPARABLES:
-        c6    = 5
-        c6_ev = (f"{dr['total']} comparable proposal(s) found, {concluded} concluded — "
-                 f"too few to judge (neutral)")
-    else:
-        rate = dr["rate"] if dr["rate"] is not None else 50
-        c6   = round(rate / 100 * 10)
-        c6_ev = f"{concluded} concluded comparable proposals — {rate}% delivery rate"
-    components["historical_precedent"] = {
-        "label":    "Historical Precedent",
-        "score":    c6,
-        "max":      10,
-        "weight":   "10%",
-        "evidence": c6_ev,
-    }
+    components["similar_delivery"] = delivery_component(
+        delivery_rate(similar), DELIVERY_MAX if is_treasury else 100)
+    if is_treasury:
+        components["treasury_size"] = treasury_component(record.get("withdrawal_amount"))
 
     return _finalize(record.get("gov_action_id"), components)
+
+
+def delivery_component(dr: dict, max_pts: int) -> dict:
+    """Taxa de entrega das propostas semanticamente similares, de qualquer autor.
+
+    Chamava-se "Proposer Track Record", mas nunca olhou o proponente — o nome
+    agora descreve o cálculo.
+    """
+    concluded = dr["delivered"] + dr["expired"]
+    if concluded < MIN_COMPARABLES:
+        score = round(max_pts / 2)
+        ev = (f"{dr['total']} similar proposal(s) found, only {concluded} concluded — "
+              f"too few to judge (neutral)")
+    else:
+        rate  = dr["rate"] if dr["rate"] is not None else 50
+        score = round(rate / 100 * max_pts)
+        ev = f"{dr['delivered']}/{concluded} concluded similar proposals were delivered ({rate}%)"
+    return {
+        "label":    "Delivery of Similar Proposals",
+        "score":    score,
+        "max":      max_pts,
+        "weight":   f"{max_pts}%",
+        "evidence": ev,
+    }
+
+
+def treasury_component(lovelace: int | None) -> dict:
+    """Tamanho do saque como % do Net Change Limit."""
+    if lovelace and lovelace > 0:
+        pct   = lovelace / NCL_LOVELACE * 100
+        score = next((pts for lim, pts in TREASURY_BANDS if pct < lim), 0)
+        ev    = f"{pct:.2f}% of NCL (300M ADA limit)"
+    else:
+        score = TREASURY_MAX // 2
+        ev    = "Withdrawal amount unknown (neutral)"
+    return {
+        "label":    "Treasury Withdrawal Size",
+        "score":    score,
+        "max":      TREASURY_MAX,
+        "weight":   f"{TREASURY_MAX}%",
+        "evidence": ev,
+    }
 
 
 def _finalize(gov_action_id, components: dict) -> dict:
@@ -169,7 +130,10 @@ def _finalize(gov_action_id, components: dict) -> dict:
 
 
 def conflict_component(action_type: str, conflicts: list | None) -> dict:
-    """Componente 3 do M4.
+    """Componente 3 do M4 no método 1.1.0 — o 1.2.0 não o tem.
+
+    Continua aqui porque o step14 ainda troca este componente em análises
+    1.1.0 não ancoradas.
 
     Hoje nenhuma checagem de conflito de interesse roda. A que existia comparava
     o histórico da carteira que pagou a taxa de submissão com o da carteira
@@ -220,5 +184,9 @@ def rescore_conflict(risk: dict, action_type: str, conflicts: list | None) -> di
     mudou. Aqui os outros cinco componentes ficam exatamente como estavam.
     """
     components = dict(risk.get("components") or {})
+    # Método 1.2.0 não pontua conflito: injetar o componente aqui somaria 20
+    # pontos a um score que não os tem.
+    if "conflict_of_interest" not in components:
+        return risk
     components["conflict_of_interest"] = conflict_component(action_type, conflicts)
     return _finalize(risk.get("gov_action_id"), components)

@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PIL_VERSION = "1.1.0"  # 1.1.0: taxa de entrega exige 3 comparáveis concluídas
+PIL_VERSION = "1.2.0"  # 1.2.0: score só com os dois sinais que discriminam (docs/m4-score-audit.md)
+                       # 1.1.0: taxa de entrega exige 3 comparáveis concluídas
 BLOCKFROST_PROJECT_ID = os.getenv("BLOCKFROST_PROJECT_ID", "")
 BLOCKFROST_BASE_URL   = os.getenv("BLOCKFROST_BASE_URL", "https://cardano-mainnet.blockfrost.io/api/v0")
 PIL_SIGNING_KEY_PATH  = os.getenv("PIL_SIGNING_KEY_PATH", "wallet/payment.skey")
