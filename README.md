@@ -81,16 +81,14 @@ The system doesn't accuse — it exposes. The output is a set of on-chain eviden
 
 ### M4 — Risk Score
 
-The Risk Score is an auditable composition of six factors. Every component is clickable and shows the raw data that generated that sub-score. No black box. A score from 0–100 where every point is traceable to on-chain evidence.
+The Risk Score is built only from the signals that actually separate one proposal from another. Every component is clickable and shows the raw data that generated it.
 
 | Component | Weight | What it measures |
 |-----------|--------|-----------------|
-| **Proposer Track Record** | 25% | Delivery rate of previous proposals. Milestones delivered vs. committed. Unrealized refunds. |
-| **Scope Clarity** | 20% | Defined milestones? Verifiable acceptance criteria on-chain? Realistic timeline? |
-| **Conflict of Interest** | 20% | M3 output. Undeclared financial relationships between proposer and beneficiaries. |
-| **Treasury Value** | 15% | Percentage of current NCL being requested. Allocation concentration by proposer. |
-| **Proposal Maturity** | 10% | Prior off-chain discussion (Ekklesia, forum). Time between idea and on-chain submission. |
-| **Historical Precedent** | 10% | Similar proposals (M2): delivery rate weighted by semantic similarity. |
+| **Delivery of Similar Proposals** | 60% (100% when no withdrawal) | Share of semantically similar proposals, from any author, that were delivered. Needs at least 3 concluded comparables; below that it scores half (neutral). |
+| **Treasury Withdrawal Size** | 40% | Amount requested as a percentage of the Net Change Limit. Only for treasury withdrawals. |
+
+A signal that does not apply is left out rather than awarded for free. Method 1.1.0 summed six components, but half of its 100 points were near-constant across proposals — see [`docs/m4-score-audit.md`](docs/m4-score-audit.md). Analyses anchored under 1.1.0 keep their original score; each page shows which method version produced it.
 
 **Score interpretation:** ≥ 70 = LOW RISK · 45–69 = MEDIUM RISK · < 45 = HIGH RISK
 

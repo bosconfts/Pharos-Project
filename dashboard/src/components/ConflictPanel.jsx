@@ -138,7 +138,8 @@ export default function ConflictPanel({ conflict }) {
       </div>
 
       {/* Os pontos vêm de step11_risk_score.conflict_component — se lá mudar,
-          esta legenda tem de mudar junto. Ela nunca existiu: a página mostrava
+          esta legenda tem de mudar junto. Vale só para análises do método
+          1.1.0: o 1.2.0 não pontua conflito. Ela nunca existiu: a página mostrava
           o selo "HIGH" sem dizer o que separava um HIGH de um MEDIUM, nem que
           um HIGH zerava 20 pontos do score. */}
       {findings.length > 0 ? (

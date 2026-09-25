@@ -1,6 +1,6 @@
 # Auditoria do Risk Score (M4) — 25/09/2026
 
-Medido sobre as 158 propostas da base. Decisão pendente no fim.
+Medido sobre as 158 propostas da base. Decisão no fim.
 
 ## O que cada componente separa de fato
 
@@ -43,6 +43,27 @@ o proponente. Olha propostas de assunto parecido, de qualquer autor.
 
 Recomendação: **2**. A 3 é intelectualmente melhor, mas um registro público sem
 nota perde a função de alertar rápido.
+
+## Decisão — caminho 2, com dois sinais (método 1.2.0)
+
+O caminho 2 listava "clareza" entre os sinais reais, mas Scope Clarity é um dos
+que dão nota cheia a 97% — então sobram **dois**:
+
+| componente | pontos |
+|---|---|
+| Delivery of Similar Proposals | 60 — ou 100 quando o saque não se aplica |
+| Treasury Withdrawal Size | 40 — só em saque de tesouro |
+
+Sinal que não se aplica sai da conta em vez de dar pontos de graça, e sem
+amostra o sinal fica no meio da escala: uma proposta sobre a qual não há nada a
+dizer cai em MEDIUM. Simulado sobre os sinais gravados das 158 propostas:
+
+| | faixa | média | desvio | LOW / MEDIUM / HIGH |
+|---|---|---|---|---|
+| 1.1.0 | 50–100 | 82,7 | 11,6 | 135 / 23 / 0 |
+| 1.2.0 | 0–100 | 61,4 | 22,0 | 54 / 75 / 29 |
+
+(As 154 ancoradas não mudam; a tabela mostra só como o método novo as veria.)
 
 ## Restrição que vale para qualquer caminho
 
