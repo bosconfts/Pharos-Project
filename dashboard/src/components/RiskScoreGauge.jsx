@@ -6,7 +6,9 @@ const tone = (s) => (s >= 70 ? "low" : s >= 45 ? "med" : "high");
 const PLAIN = {
   low:  "Nothing in the record stands out as a concern.",
   med:  "Parts of the record are thin or unresolved. Worth reading before voting.",
-  high: "The record raises concerns that deserve an answer before this is funded.",
+  // No método 1.2.0 HIGH quer dizer entrega fraca de similares e/ou saque
+  // grande — e pode cair numa InfoAction, que não pede dinheiro.
+  high: "Similar proposals have mostly failed to deliver, or the amount requested is large. Read closely before voting.",
 };
 
 export default function RiskScoreGauge({ riskScore }) {
