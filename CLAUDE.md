@@ -168,10 +168,10 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   novo vale para análise nova: o `PIL_VERSION` sobe e a página mostra qual
   versão produziu cada número.
 - O score só tem os sinais que discriminam (método 1.2.0): entrega de
-  similares e tamanho do saque. O 1.1.0 somava seis componentes, e 50 dos 100
+  similares e tamanho do saque. O 1.0.0 e o 1.1.0 somavam seis componentes, e 50 dos 100
   pontos eram quase constantes. Sinal que não se aplica sai da conta — não
   voltar a dar pontos cheios por "não se aplica", que é o que inflava a nota.
-  Medição e decisão em `docs/m4-score-audit.md`. Análises ancoradas no 1.1.0
+  Medição e decisão em `docs/m4-score-audit.md`. As 154 ancoradas são todas 1.0.0 e
   seguem com seis componentes, e o código de conflito fica só para elas.
 - A taxa de entrega do M2 exige `MIN_COMPARABLES` comparáveis **concluídas**.
   Os componentes 1 e 6 somam 35 pontos e saem os dois da mesma taxa: com uma

@@ -88,7 +88,7 @@ The Risk Score is built only from the signals that actually separate one proposa
 | **Delivery of Similar Proposals** | 60% (100% when no withdrawal) | Share of semantically similar proposals, from any author, that were delivered. Needs at least 3 concluded comparables; below that it scores half (neutral). |
 | **Treasury Withdrawal Size** | 40% | Amount requested as a percentage of the Net Change Limit. Only for treasury withdrawals. |
 
-A signal that does not apply is left out rather than awarded for free. Method 1.1.0 summed six components, but half of its 100 points were near-constant across proposals — see [`docs/m4-score-audit.md`](docs/m4-score-audit.md). Analyses anchored under 1.1.0 keep their original score; each page shows which method version produced it.
+A signal that does not apply is left out rather than awarded for free. Earlier methods (1.0.0 and 1.1.0) summed six components, but half of their 100 points were near-constant across proposals — see [`docs/m4-score-audit.md`](docs/m4-score-audit.md). The analyses already anchored, all under 1.0.0, keep their original score; each page shows which method version produced it.
 
 **Score interpretation:** ≥ 70 = LOW RISK · 45–69 = MEDIUM RISK · < 45 = HIGH RISK
 

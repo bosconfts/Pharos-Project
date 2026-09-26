@@ -2,7 +2,7 @@ import "./ScoreMethod.css";
 
 // Espelha core/step11_risk_score.py (método 1.2.0) — se lá mudar, aqui muda
 // junto. A página não explicava o método em lugar nenhum; com duas versões
-// convivendo, um 82 do 1.1.0 aparecia ao lado de um 61 do 1.2.0 e o leitor
+// convivendo, um 82 do 1.0.0 aparecia ao lado de um 61 do 1.2.0 e o leitor
 // concluía o contrário do que os números dizem.
 const COMPONENTS = [
   {
@@ -74,7 +74,8 @@ export default function ScoreMethod({ onClose }) {
 
         <p className="method-fine">
           <strong>Earlier analyses use a different method.</strong> Records produced
-          under PIL v1.1.0 summed six components, three of which gave nearly every
+          before PIL v1.2.0, including every analysis anchored under v1.0.0, summed
+          six components, three of which gave nearly every
           proposal full marks, so those scores ran from 50 to 100 and read higher. They
           are never recalculated, because the document anchored on chain is the record.
           The two versions are not comparable, and each proposal shows which one
