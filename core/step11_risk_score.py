@@ -130,10 +130,10 @@ def _finalize(gov_action_id, components: dict) -> dict:
 
 
 def conflict_component(action_type: str, conflicts: list | None) -> dict:
-    """Componente 3 do M4 no método 1.1.0 — o 1.2.0 não o tem.
+    """Componente 3 do M4 nos métodos 1.0.0 e 1.1.0 — o 1.2.0 não o tem.
 
     Continua aqui porque o step14 ainda troca este componente em análises
-    1.1.0 não ancoradas.
+    anteriores ao 1.2.0 não ancoradas.
 
     Hoje nenhuma checagem de conflito de interesse roda. A que existia comparava
     o histórico da carteira que pagou a taxa de submissão com o da carteira
