@@ -366,7 +366,7 @@ def get_pending_publish(limit: int = 10, gov_action_id: str | None = None) -> li
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT gov_action_id, pil_document, pil_doc_hash
+        SELECT gov_action_id, pil_document, pil_doc_hash, risk_score
         FROM governance_actions
         WHERE analysis IS NOT NULL
           AND pil_document IS NOT NULL
