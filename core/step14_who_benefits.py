@@ -36,6 +36,7 @@ import psycopg2.extras
 from database          import get_conn, save_conflict_and_risk
 from step10_conflict   import detect_conflicts, beneficiary_history
 from step11_risk_score import rescore_conflict
+from step13_documents  import rebuild_document
 
 
 def _parse(v):
@@ -143,6 +144,8 @@ def run(dry_run: bool = False) -> dict:
             proposer_address  = (conflict.get("proposer_addresses") or [None])[0],
             risk              = new_risk,
         )
+        # Conflitos e nota entram no documento: ele é remontado junto.
+        rebuild_document(gid)
         stats["refreshed"] += 1
 
     return stats

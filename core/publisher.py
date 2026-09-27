@@ -77,6 +77,12 @@ def wait_spendable(tx_hash: str, timeout: int = 300) -> bool:
     return False
 
 
+def stale_score(doc: dict, risk_score) -> bool:
+    """True quando a nota no documento não é a que está no banco."""
+    block = ((doc or {}).get("pilAnalysis") or {}).get("pilRiskScore") or {}
+    return block.get("scoreTotal") != risk_score
+
+
 def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) -> dict:
     pending = get_pending_publish(limit=limit, gov_action_id=gov_action_id)
 
@@ -127,6 +133,16 @@ def run(limit: int = 5, dry_run: bool = True, gov_action_id: str | None = None) 
 
             if doc_hash != stored:
                 print(f"⚠️  {gid[:24]}… hash divergente do registrado — pulando")
+                stats["failed"] += 1
+                continue
+
+            # O hash só prova que o documento não mudou desde que foi gravado —
+            # não que ainda diz o que o site mostra. Uma nota recalculada sem
+            # remontar o documento passava por aqui e ia para a chain com o
+            # número antigo. Ancoragem não se desfaz: divergiu, não publica.
+            if stale_score(doc, row.get("risk_score")):
+                print(f"⚠️  {gid[:24]}… documento com nota diferente da gravada — "
+                      f"rode step13_documents.py e tente de novo")
                 stats["failed"] += 1
                 continue
 

@@ -74,6 +74,52 @@ def rebuild_one(row: dict) -> tuple[dict, str]:
     return doc, compute_document_hash(doc)
 
 
+def rebuild_document(gov_action_id: str) -> str | None:
+    """Remonta e grava o documento de uma action cuja análise acabou de mudar.
+
+    Quem regrava o score fora do pipeline (step12, step14) precisa chamar isto
+    em seguida. Sem isso o documento continuava com a nota anterior, e o
+    publisher o ancorava: o hash conferia — ele cobre o documento, não o que
+    está nas colunas — e a chain ficava com um número que o site não mostra.
+
+    Mesmas regras do rebuild_all: não toca ancorada nem cria documento que não
+    existia. Devolve o hash novo, ou None quando não havia o que remontar.
+    """
+    conn = get_conn()
+    cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(f"""
+        SELECT * FROM governance_actions
+        WHERE gov_action_id = %s
+          AND analysis IS NOT NULL
+          AND on_chain_tx IS NULL
+          AND pil_document IS NOT NULL
+          AND {GENUINE_SUMMARY_SQL}
+    """, (gov_action_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        return None
+
+    doc, doc_hash = rebuild_one(row)
+    _write(cur, gov_action_id, doc, doc_hash)
+    conn.commit()
+    cur.close(); conn.close()
+    return doc_hash
+
+
+def _write(cur, gov_action_id: str, doc: dict, doc_hash: str):
+    # Documento, hash e o hash exibido pelo dashboard (dentro de `analysis`)
+    # mudam na mesma transação: nenhum dos três pode ficar para trás.
+    cur.execute("""
+        UPDATE governance_actions
+        SET pil_document = %s,
+            pil_doc_hash = %s,
+            analysis     = jsonb_set(analysis, '{pil_document_hash}', to_jsonb(%s::text))
+        WHERE gov_action_id = %s
+          AND on_chain_tx IS NULL
+    """, (json.dumps(doc, default=str), doc_hash, doc_hash, gov_action_id))
+
+
 def rebuild_all(dry_run: bool = False) -> dict:
     conn = get_conn()
     cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -105,16 +151,7 @@ def rebuild_all(dry_run: bool = False) -> dict:
             stats["rebuilt"] += 1
             continue
 
-        # Documento, hash e o hash exibido pelo dashboard (dentro de `analysis`)
-        # mudam na mesma transação: nenhum dos três pode ficar para trás.
-        cur.execute("""
-            UPDATE governance_actions
-            SET pil_document = %s,
-                pil_doc_hash = %s,
-                analysis     = jsonb_set(analysis, '{pil_document_hash}', to_jsonb(%s::text))
-            WHERE gov_action_id = %s
-              AND on_chain_tx IS NULL
-        """, (json.dumps(doc, default=str), doc_hash, doc_hash, gid))
+        _write(cur, gid, doc, doc_hash)
         stats["rebuilt"] += 1
 
     if not dry_run:

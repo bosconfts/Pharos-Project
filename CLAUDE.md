@@ -152,7 +152,11 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   "PENDING", sem conflitos nem similares, apontando para um domínio que não
   existe e dizendo que o pipeline era determinístico. Documento e
   `pil_doc_hash` são gravados juntos pelo `save_analysis` — o publisher
-  recalcula o hash e recusa se divergir.
+  recalcula o hash e recusa se divergir. Quem regrava a nota fora do pipeline
+  (`step12`, `step14`) chama `step13_documents.rebuild_document` em seguida;
+  e o publisher também recusa documento cuja nota difere da coluna
+  `risk_score`, porque o hash só prova que o documento não mudou, não que
+  ainda diz o que o site mostra.
 - O M3 não detecta conflito de interesse — mostra quem se beneficia. O
   "proponente" na chain é a carteira que pagou a taxa de submissão, e em geral
   é um administrador submetendo em lote (uma carteira submeteu 39 dos 104

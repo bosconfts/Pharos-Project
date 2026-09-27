@@ -29,6 +29,7 @@ import httpx
 from database          import get_conn, get_action, save_conflict_and_risk, update_lifecycle
 from step8_similarity  import find_similar
 from step11_risk_score import compute_risk_score
+from step13_documents  import rebuild_document
 
 BLOCKFROST_BASE_URL   = os.getenv("BLOCKFROST_BASE_URL", "https://cardano-mainnet.blockfrost.io/api/v0")
 BLOCKFROST_PROJECT_ID = os.getenv("BLOCKFROST_PROJECT_ID")
@@ -91,6 +92,8 @@ def rescore(gov_action_id: str) -> int | None:
         risk_components = risk["components"],
         risk            = risk,
     )
+    # A nota mudou; o documento que vai para a chain tem de mudar junto.
+    rebuild_document(gov_action_id)
     return risk["total"]
 
 
