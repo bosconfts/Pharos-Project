@@ -61,11 +61,15 @@
 
 /* ── Comparáveis ───────────────────────────────────────────────────────── */
 .similar { list-style: none; }
+.similar li + li .similar-item { border-top: 1px solid var(--rule-soft); }
+.similar li:first-child .similar-item { padding-top: 0; }
+/* Link, mas lido como linha do registro: o título é o que muda no hover. */
 .similar-item {
   display: flex; align-items: baseline; gap: 10px;
-  padding: 11px 0; border-top: 1px solid var(--rule-soft);
+  padding: 11px 0;
+  color: inherit; border-bottom: none; text-decoration: none;
 }
-.similar-item:first-child { border-top: none; padding-top: 0; }
+.similar-item:hover .similar-title { color: var(--seal); text-decoration: underline; text-underline-offset: 3px; }
 .similar-title {
   font-size: 14px; color: var(--ink); font-weight: 400;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch;

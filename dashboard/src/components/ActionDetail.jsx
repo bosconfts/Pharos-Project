@@ -13,7 +13,7 @@ const TYPE_LABEL = {
   UpdateCommittee:     "Committee update",
 };
 
-export default function ActionDetail({ analysis, onMethod }) {
+export default function ActionDetail({ analysis, onMethod, onSelect }) {
   const summaries = analysis.summaries || {};
   const sim       = analysis.similarity;
   const dr        = sim?.delivery_rate;
@@ -112,13 +112,25 @@ export default function ActionDetail({ analysis, onMethod }) {
           <h3 className="eyebrow">Comparable proposals</h3>
           <ul className="similar">
             {similar.map((p) => (
-              <li key={p.gov_action_id} className="similar-item">
-                <span className="similar-title">
-                  {p.title || p.one_liner || `${p.gov_action_id.slice(0, 24)}…`}
-                </span>
-                <span className="similar-leader" aria-hidden="true" />
-                <span className="similar-status">{p.status}</span>
-                <span className="similar-match mono">{Math.round(p.similarity * 100)}%</span>
+              <li key={p.gov_action_id}>
+                {/* Link de verdade: Ctrl+clique abre em outra aba, e o clique
+                    simples troca a análise sem recarregar a página. */}
+                <a
+                  className="similar-item"
+                  href={`?p=${encodeURIComponent(p.gov_action_id)}`}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                    e.preventDefault();
+                    onSelect?.(p.gov_action_id);
+                  }}
+                >
+                  <span className="similar-title">
+                    {p.title || p.one_liner || `${p.gov_action_id.slice(0, 24)}…`}
+                  </span>
+                  <span className="similar-leader" aria-hidden="true" />
+                  <span className="similar-status">{p.status}</span>
+                  <span className="similar-match mono">{Math.round(p.similarity * 100)}%</span>
+                </a>
               </li>
             ))}
           </ul>
