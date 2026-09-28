@@ -21,6 +21,19 @@ function matches(action, query) {
   return terms.every((t) => haystack.includes(t));
 }
 
+// O id tem "#" (tx#índice): vai codificado, senão viraria âncora da URL.
+function proposalFromUrl() {
+  return new URLSearchParams(window.location.search).get("p");
+}
+
+function setProposalUrl(id, replace = false) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("p", id);
+  else url.searchParams.delete("p");
+  if (url.href === window.location.href) return;
+  window.history[replace ? "replaceState" : "pushState"]({ p: id }, "", url);
+}
+
 export default function App() {
   const [stats, setStats]       = useState(null);
   const [query, setQuery]       = useState("");
@@ -39,7 +52,18 @@ export default function App() {
 
   useEffect(() => {
     fetchStats().then(setStats).catch(() => setStats(null));
-    loadActions("analysed");
+    loadActions("analysed", { keepUrl: true });
+    // Link direto para uma proposta (?p=<id>) abre ela; o voltar do navegador
+    // refaz o caminho entre propostas em vez de sair do site.
+    const initial = proposalFromUrl();
+    if (initial) selectAction(initial, { push: false });
+    const onPop = () => {
+      const id = proposalFromUrl();
+      if (id) selectAction(id, { push: false, scroll: true });
+      else { setSelected(null); setAnalysis(null); setDetail("idle"); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   const visible = useMemo(
@@ -47,7 +71,8 @@ export default function App() {
     [actions, query]
   );
 
-  async function loadActions(mode) {
+  async function loadActions(mode, { keepUrl = false } = {}) {
+    if (!keepUrl) setProposalUrl(null, true);
     setTab(mode);
     setQuery("");
     setSelected(null);
@@ -77,7 +102,18 @@ export default function App() {
     );
   }
 
-  async function selectAction(id) {
+  async function selectAction(id, { push = true, scroll = false } = {}) {
+    if (push) setProposalUrl(id);
+    // Vindo de uma comparável, o leitor está no pé da análise anterior: sem
+    // isto a nova carregaria fora da tela.
+    if (scroll) {
+      requestAnimationFrame(() => {
+        const pane = document.querySelector(".record-pane");
+        if (pane && pane.getBoundingClientRect().top < 0) {
+          pane.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
     setSelected(id);
     setAnalysis(null);
     setDetail("loading");
@@ -214,7 +250,11 @@ export default function App() {
             </div>
           )}
 
-          {detail === "ok" && analysis && <ActionDetail analysis={analysis} onMethod={showMethod} />}
+          {detail === "ok" && analysis && <ActionDetail
+              analysis={analysis}
+              onMethod={showMethod}
+              onSelect={(id) => selectAction(id, { scroll: true })}
+            />}
 
           {detail === "idle" && (
             <div className="state">
