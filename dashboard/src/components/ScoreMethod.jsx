@@ -4,10 +4,10 @@ import "./ScoreMethod.css";
 // junto.
 const COMPONENTS = [
   {
-    label:  "Delivery of similar proposals",
+    label:  "Approval of similar proposals",
     points: "60",
     note:   "100 when no treasury funds are requested",
-    what:   "Of the most similar past proposals, by any author, the share that delivered. " +
+    what:   "Of the most similar past proposals, by any author, the share that passed the vote. " +
             "Needs at least three that have concluded; with fewer, it scores half.",
   },
   {
@@ -38,7 +38,7 @@ export default function ScoreMethod({ onClose }) {
           A score from 0 to 100, where higher means lower risk. It is built only from
           signals that actually separate one proposal from another. A signal that does
           not apply is left out rather than awarded for free, so a proposal that asks
-          for no funds is judged on delivery alone.
+          for no funds is judged on approval alone.
         </p>
 
         <ol className="method-list">

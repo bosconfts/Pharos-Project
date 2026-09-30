@@ -171,8 +171,11 @@ O venv fica em `venv/` (Windows: `./venv/Scripts/python.exe`).
   chain) mas pula o rescore dessas; `step14_who_benefits` as ignora. Método
   novo vale para análise nova: o `PIL_VERSION` sobe e a página mostra qual
   versão produziu cada número.
-- O score só tem os sinais que discriminam (método 1.2.0): entrega de
-  similares e tamanho do saque. O 1.0.0 e o 1.1.0 somavam seis componentes, e 50 dos 100
+- O score só tem os sinais que discriminam (método 1.2.0): aprovação de
+  similares e tamanho do saque. "Aprovação", não "entrega": o `delivered` do
+  `step8_similarity` é ratified/enacted, e a entrega do trabalho não está na
+  chain. O nome saiu errado duas vezes — nunca prometer no rótulo o que a
+  função não mede. O 1.0.0 e o 1.1.0 somavam seis componentes, e 50 dos 100
   pontos eram quase constantes. Sinal que não se aplica sai da conta — não
   voltar a dar pontos cheios por "não se aplica", que é o que inflava a nota.
   Medição e decisão em `docs/m4-score-audit.md`. As 154 ancoradas são todas 1.0.0 e

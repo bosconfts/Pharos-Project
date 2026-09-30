@@ -64,6 +64,11 @@ def find_similar(
 def delivery_rate(similar: list[dict]) -> dict:
     """
     Calcula o delivery rate do conjunto de proposals similares.
+
+    Apesar do nome, mede APROVAÇÃO, não entrega: 'delivered' é ratified ou
+    enacted, ou seja, passou na votação. Se o trabalho foi feito não está na
+    chain. O nome ficou porque as análises ancoradas guardam a chave
+    `delivered`; o que se publica diz "approved"/"passed the vote".
     'Entregue' = ratified_epoch ou enacted_epoch não nulo.
     'Expirado/Descartado' = expired_epoch ou dropped_epoch não nulo.
     'Pendente' = nenhum dos acima.
