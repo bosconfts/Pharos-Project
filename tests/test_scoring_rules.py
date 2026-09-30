@@ -1,7 +1,7 @@
 """
 Três regras que o score não pode perder.
 
-A primeira: a taxa de entrega só vale com amostra. Com uma única comparável
+A primeira: a taxa de aprovação das similares só vale com amostra. Com uma única comparável
 aprovada a taxa dava 100%, e 35 dos 100 pontos saíam de uma amostra de tamanho
 um — 26 propostas da base estavam assim.
 
@@ -55,28 +55,28 @@ class TestMinimumSample(unittest.TestCase):
 
     def test_uma_comparavel_aprovada_nao_da_nota_cheia(self):
         c = self._score([_comparable("enacted")])["components"]
-        self.assertEqual(c["similar_delivery"]["score"], 30)
-        self.assertIn("too few", c["similar_delivery"]["evidence"])
+        self.assertEqual(c["similar_approval"]["score"], 30)
+        self.assertIn("too few", c["similar_approval"]["evidence"])
 
     def test_duas_ainda_sao_poucas(self):
         c = self._score([_comparable("enacted"), _comparable("ratified")])["components"]
-        self.assertEqual(c["similar_delivery"]["score"], 30)
+        self.assertEqual(c["similar_approval"]["score"], 30)
 
     def test_tres_concluidas_valem(self):
         c = self._score([_comparable("enacted")] * 3)["components"]
-        self.assertEqual(c["similar_delivery"]["score"], 60)
+        self.assertEqual(c["similar_approval"]["score"], 60)
 
     def test_pendentes_nao_contam_como_amostra(self):
         """Quem ainda está em votação não entregou nem deixou de entregar."""
         similar = [_comparable("enacted")] + [_comparable("pending")] * 4
         c = self._score(similar)["components"]
-        self.assertEqual(c["similar_delivery"]["score"], 30)
+        self.assertEqual(c["similar_approval"]["score"], 30)
 
     def test_tres_concluidas_com_metade_entregue(self):
         similar = [_comparable("enacted"), _comparable("expired"), _comparable("expired")]
         c = self._score(similar)["components"]
-        self.assertLess(c["similar_delivery"]["score"], 60)
-        self.assertGreater(c["similar_delivery"]["score"], 0)
+        self.assertLess(c["similar_approval"]["score"], 60)
+        self.assertGreater(c["similar_approval"]["score"], 0)
 
 
 class TestOnlySignalsThatDiscriminate(unittest.TestCase):
@@ -84,15 +84,15 @@ class TestOnlySignalsThatDiscriminate(unittest.TestCase):
 
     def test_saque_tem_so_os_dois_sinais(self):
         r = m4.compute_risk_score(_record(), conflicts=[], similar=[])
-        self.assertEqual(set(r["components"]), {"similar_delivery", "treasury_size"})
+        self.assertEqual(set(r["components"]), {"similar_approval", "treasury_size"})
         self.assertEqual(sum(c["max"] for c in r["components"].values()), 100)
 
     def test_sinal_que_nao_se_aplica_sai_da_conta(self):
         """Uma InfoAction não ganha 40 pontos de graça por não ser saque."""
         rec = dict(_record(), action_type="InfoAction")
         r = m4.compute_risk_score(rec, conflicts=[], similar=[_comparable("expired")] * 3)
-        self.assertEqual(list(r["components"]), ["similar_delivery"])
-        self.assertEqual(r["components"]["similar_delivery"]["max"], 100)
+        self.assertEqual(list(r["components"]), ["similar_approval"])
+        self.assertEqual(r["components"]["similar_approval"]["max"], 100)
         self.assertEqual(r["total"], 0)
         self.assertEqual(r["level"], "HIGH RISK")
 

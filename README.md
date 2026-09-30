@@ -85,7 +85,7 @@ The Risk Score is built only from the signals that actually separate one proposa
 
 | Component | Weight | What it measures |
 |-----------|--------|-----------------|
-| **Delivery of Similar Proposals** | 60% (100% when no withdrawal) | Share of semantically similar proposals, from any author, that were delivered. Needs at least 3 concluded comparables; below that it scores half (neutral). |
+| **Approval of Similar Proposals** | 60% (100% when no withdrawal) | Share of semantically similar proposals, from any author, that passed the vote (ratified or enacted). Whether the work was then delivered happens off-chain and is not measured. Needs at least 3 concluded comparables; below that it scores half (neutral). |
 | **Treasury Withdrawal Size** | 40% | Amount requested as a percentage of the Net Change Limit. Only for treasury withdrawals. |
 
 A signal that does not apply is left out rather than awarded for free. Earlier methods (1.0.0 and 1.1.0) summed six components, but half of their 100 points were near-constant across proposals — see [`docs/m4-score-audit.md`](docs/m4-score-audit.md). The analyses already anchored, all under 1.0.0, keep their original score; each page shows which method version produced it.
@@ -175,7 +175,7 @@ Pharos does not compete with existing governance tools — it is an analysis lay
 ### Phase 2 — Historical Intelligence (Months 3–4) ✅
 - Historical backfill: all governance actions since Chang (Aug 2024)
 - M2: embeddings + pgvector + similarity search
-- Output: "N similar proposals, X% delivery rate"
+- Output: "N similar proposals, X% approved" (approval by vote, not delivery of the work)
 - Public dashboard for PIL analyses
 
 ### Phase 3 — Conflict Detection (Months 5–6) ✅

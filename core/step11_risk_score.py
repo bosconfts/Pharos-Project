@@ -6,18 +6,18 @@ proposal from another. Higher score = lower risk.
 Método 1.2.0. O anterior somava seis componentes, e 50 dos 100 pontos eram
 quase constantes: Conflict of Interest dava 20 a todos (nenhuma checagem roda),
 Scope Clarity dava nota cheia a 97% das propostas e Documentation Quality a
-87%. A taxa de entrega de similares entrava duas vezes, com dois nomes. As
+87%. A taxa de aprovação de similares entrava duas vezes, com dois nomes. As
 notas iam de 50 a 100 e nenhuma proposta jamais chegou a HIGH RISK.
 
 Ficaram os dois sinais que medem algo (docs/m4-score-audit.md):
 
-  - entrega de propostas similares — 60 pontos, ou 100 quando o saque não se
-    aplica;
+  - aprovação de propostas similares — 60 pontos, ou 100 quando o saque não
+    se aplica;
   - tamanho do saque frente ao Net Change Limit — 40 pontos, só em saque de
     tesouro.
 
 Sinal que não se aplica sai da conta, em vez de dar pontos de graça: uma
-InfoAction é julgada só pelo histórico. Sem amostra suficiente, o sinal fica no
+InfoAction é julgada só pela aprovação das similares. Sem amostra suficiente, o sinal fica no
 meio da escala, e uma proposta sem nada a dizer cai em MEDIUM, não em LOW.
 
 Análises ancoradas com o método anterior continuam com seis componentes — o
@@ -34,13 +34,13 @@ from step8_similarity import find_similar, delivery_rate
 
 NCL_LOVELACE = 300_000_000_000_000  # 300 million ADA
 
-# Quantas propostas comparáveis precisam ter terminado para a taxa de entrega
+# Quantas propostas comparáveis precisam ter terminado para a taxa de aprovação
 # valer alguma coisa. Com uma única comparável aprovada a taxa dá 100%, e a
 # proposta ganhava os pontos cheios a partir de uma amostra de tamanho 1 —
 # 26 propostas da base estavam nessa situação. Abaixo disto, neutro.
 MIN_COMPARABLES = 3
 
-DELIVERY_MAX = 60   # 100 quando o saque não se aplica
+APPROVAL_MAX = 60   # 100 quando o saque não se aplica
 TREASURY_MAX = 40
 
 # Faixas de % do NCL → fração dos pontos do saque. As mesmas faixas do método
@@ -63,19 +63,22 @@ def compute_risk_score(record: dict, conflicts: list | None = None, similar: lis
 
     is_treasury = record.get("action_type") == "TreasuryWithdrawals"
     components  = {}
-    components["similar_delivery"] = delivery_component(
-        delivery_rate(similar), DELIVERY_MAX if is_treasury else 100)
+    components["similar_approval"] = approval_component(
+        delivery_rate(similar), APPROVAL_MAX if is_treasury else 100)
     if is_treasury:
         components["treasury_size"] = treasury_component(record.get("withdrawal_amount"))
 
     return _finalize(record.get("gov_action_id"), components)
 
 
-def delivery_component(dr: dict, max_pts: int) -> dict:
-    """Taxa de entrega das propostas semanticamente similares, de qualquer autor.
+def approval_component(dr: dict, max_pts: int) -> dict:
+    """Share of the most similar proposals, by any author, that passed the vote.
 
-    Chamava-se "Proposer Track Record", mas nunca olhou o proponente — o nome
-    agora descreve o cálculo.
+    O nome foi errado duas vezes. "Proposer Track Record" nunca olhou o
+    proponente; "Delivery of Similar Proposals" prometia entrega, mas o que o
+    step8 conta como `delivered` é ratified/enacted — aprovação na votação. Se o
+    trabalho foi feito acontece fora da chain e o Pharos não vê. Corrigido antes
+    de qualquer análise 1.2.0 ser ancorada, por isso a versão não subiu.
     """
     concluded = dr["delivered"] + dr["expired"]
     if concluded < MIN_COMPARABLES:
@@ -85,9 +88,9 @@ def delivery_component(dr: dict, max_pts: int) -> dict:
     else:
         rate  = dr["rate"] if dr["rate"] is not None else 50
         score = round(rate / 100 * max_pts)
-        ev = f"{dr['delivered']}/{concluded} concluded similar proposals were delivered ({rate}%)"
+        ev = f"{dr['delivered']}/{concluded} concluded similar proposals passed the vote ({rate}%)"
     return {
-        "label":    "Delivery of Similar Proposals",
+        "label":    "Approval of Similar Proposals",
         "score":    score,
         "max":      max_pts,
         "weight":   f"{max_pts}%",

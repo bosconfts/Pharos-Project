@@ -51,7 +51,7 @@ que dão nota cheia a 97% — então sobram **dois**:
 
 | componente | pontos |
 |---|---|
-| Delivery of Similar Proposals | 60 — ou 100 quando o saque não se aplica |
+| Approval of Similar Proposals | 60 — ou 100 quando o saque não se aplica |
 | Treasury Withdrawal Size | 40 — só em saque de tesouro |
 
 Sinal que não se aplica sai da conta em vez de dar pontos de graça, e sem
@@ -64,6 +64,15 @@ dizer cai em MEDIUM. Simulado sobre os sinais gravados das 158 propostas:
 | 1.2.0 | 0–100 | 61,4 | 22,0 | 54 / 75 / 29 |
 
 (As 154 ancoradas não mudam; a tabela mostra só como o método novo as veria.)
+
+**Correção de nome, 30/09/2026.** O componente saiu como "Delivery of Similar
+Proposals", mas o que a função conta como entregue é ratified/enacted —
+aprovação na votação. Renomeado para "Approval of Similar Proposals" antes de
+qualquer análise 1.2.0 ser ancorada.
+
+**Pergunta em aberto para o próximo método:** 60 dos 100 pontos dizem "propostas
+parecidas costumam ser aprovadas". Isso prevê aprovação, não risco, e é
+circular: quem vota consulta o score, e o score repete como se votou antes.
 
 ## Restrição que vale para qualquer caminho
 
