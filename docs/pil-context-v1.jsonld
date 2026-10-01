@@ -1,0 +1,31 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "pil": "https://cardano-pil.org/ns/1.0#",
+
+    "pilAnalysis":          { "@id": "pil:analysis",        "@type": "@id" },
+    "pilVersion":           { "@id": "pil:version" },
+    "pilGeneratedAt":       { "@id": "pil:generatedAt" },
+    "pilActionType":        { "@id": "pil:actionType" },
+
+    "pilBodyHash":          { "@id": "pil:bodyHash",         "@type": "@id" },
+    "pilSummary":           { "@id": "pil:summary",          "@type": "@id" },
+    "summaryOneLiner":      { "@id": "pil:summaryOneLiner" },
+    "summaryTechnical":     { "@id": "pil:summaryTechnical" },
+    "summaryFull":          { "@id": "pil:summaryFull",      "@type": "@id" },
+
+    "pilRiskScore":         { "@id": "pil:riskScore",        "@type": "@id" },
+    "scoreTotal":           { "@id": "pil:scoreTotal" },
+    "scoreInterpretation":  { "@id": "pil:scoreInterpretation" },
+
+    "pilSimilarProposals":  { "@id": "pil:similarProposals", "@container": "@list" },
+    "pilConflicts":         { "@id": "pil:conflicts",        "@container": "@list" },
+
+    "pilMerkleRoot":        { "@id": "pil:merkleRoot",       "@type": "@id" },
+
+    "algorithm":            { "@id": "pil:algorithm" },
+    "value":                { "@id": "pil:value" },
+    "leaves":               { "@id": "pil:leaves",           "@container": "@list" },
+    "sourceUri":            { "@id": "pil:sourceUri",        "@type": "@id" }
+  }
+}
