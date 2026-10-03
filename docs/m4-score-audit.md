@@ -1,82 +1,58 @@
-# Auditoria do Risk Score (M4) — 25/09/2026
+# Risk Score (M4) Audit — 25 September 2026
 
-Medido sobre as 158 propostas da base. Decisão no fim.
+Measured over the 158 proposals in the database. The decision is at the end.
 
-## O que cada componente separa de fato
+## What each component actually separates
 
-| componente | peso | nota cheia | o que mede |
+| Component | Points | Share at full marks | What it measures |
 |---|---|---|---|
-| Conflict of Interest | 20 | **100%** | nada — nenhuma checagem roda |
-| Scope Clarity | 20 | **97%** | se título, abstract, motivation e rationale existem e passam de 50–100 caracteres |
-| Documentation Quality | 10 | **87%** | contagem de palavras acima de 500 |
-| Treasury Value | 15 | 65% | % do Net Change Limit — discrimina |
-| Proposer Track Record | 25 | 22% | taxa de entrega de propostas **semanticamente similares** |
-| Historical Precedent | 10 | 22% | **a mesma taxa, de novo** |
+| Conflict of Interest | 20 | **100%** | Nothing: no check runs |
+| Scope Clarity | 20 | **97%** | Whether title, abstract, motivation and rationale exist and exceed 50–100 characters |
+| Documentation Quality | 10 | **87%** | Word count above 500 |
+| Treasury Value | 15 | 65% | Share of the Net Change Limit requested. It discriminates |
+| Proposer Track Record | 25 | 22% | Vote approval rate of **semantically similar** proposals (labelled "delivery" at the time) |
+| Historical Precedent | 10 | 22% | **The same rate, again** |
 
-## Conclusão
+## Conclusion
 
-**50 dos 100 pontos são quase constantes.** Conflito dá 20 a todos, Scope Clarity
-a 97% e Documentação a 87%. Não distinguem proposta boa de ruim; engordam o número.
+**50 of the 100 points are near-constant.** Conflict gives 20 to everyone, Scope Clarity is full for 97% of proposals and Documentation for 87%. They do not separate a good proposal from a poor one; they inflate the number.
 
-A variação real vem de **dois sinais**: a taxa de entrega de similares — contada
-duas vezes, somando 35 pontos — e o tamanho do saque (15 pontos).
+The real variation comes from **two signals**: the approval rate of similar proposals, counted twice for 35 points, and the withdrawal size (15 points).
 
-Distribuição: scores de **50 a 100**, média 82,7, desvio 11,6. Metade da escala
-nunca é usada e nenhuma proposta jamais atingiu HIGH RISK (< 45). Um "76/100"
-aparenta julgamento fino; na prática diz "não é das maiores e tem histórico
-mediano".
+Distribution: scores from **50 to 100**, mean 82.7, standard deviation 11.6. Half the scale is never used, and no proposal ever reached HIGH RISK (< 45). A "76/100" looks like a fine judgement; in practice it says "not one of the largest, and an average history".
 
-**O nome mais forte é o que menos se cumpre:** "Proposer Track Record" não olha
-o proponente. Olha propostas de assunto parecido, de qualquer autor.
+**The strongest name is the least true:** "Proposer Track Record" does not look at the proposer. It looks at proposals on a similar subject, by any author.
 
-## Caminhos
+## Options
 
-1. **Manter e documentar.** A página já exibe a evidência de cada componente.
-   Custo zero, honestidade média.
-2. **Cortar para o que mede algo.** Três sinais reais — histórico de entrega
-   (uma vez, não duas), tamanho do saque, clareza — com pesos redistribuídos, e
-   o componente renomeado para descrever o cálculo. O score passa a variar de
-   verdade.
-3. **Abandonar a nota única.** Mostrar os sinais lado a lado, sem somar. Mais
-   honesto e mais radical: um número redondo dá conforto que os dados não
-   sustentam.
+1. **Keep and document.** The page already shows the evidence behind each component. No cost, moderate honesty.
+2. **Cut to what measures something.** Keep the real signals (the approval history once, not twice, and the withdrawal size), redistribute the weights, and rename the component to describe the calculation. The score starts to vary for real.
+3. **Drop the single score.** Show the signals side by side without adding them up. More honest and more radical: a round number gives comfort the data does not support.
 
-Recomendação: **2**. A 3 é intelectualmente melhor, mas um registro público sem
-nota perde a função de alertar rápido.
+Recommendation: **2**. Option 3 is intellectually better, but a public record with no score loses its ability to flag quickly.
 
-## Decisão — caminho 2, com dois sinais (método 1.2.0)
+## Decision: option 2, with two signals (method 1.2.0)
 
-O caminho 2 listava "clareza" entre os sinais reais, mas Scope Clarity é um dos
-que dão nota cheia a 97% — então sobram **dois**:
+Option 2 as first written also listed "clarity" among the real signals, but Scope Clarity is one of the components that gives full marks to 97% of proposals. That leaves **two**:
 
-| componente | pontos |
+| Component | Points |
 |---|---|
-| Approval of Similar Proposals | 60 — ou 100 quando o saque não se aplica |
-| Treasury Withdrawal Size | 40 — só em saque de tesouro |
+| Approval of Similar Proposals | 60, or 100 when there is no withdrawal |
+| Treasury Withdrawal Size | 40, treasury withdrawals only |
 
-Sinal que não se aplica sai da conta em vez de dar pontos de graça, e sem
-amostra o sinal fica no meio da escala: uma proposta sobre a qual não há nada a
-dizer cai em MEDIUM. Simulado sobre os sinais gravados das 158 propostas:
+A signal that does not apply is left out instead of being awarded for free. Without enough sample, a signal sits at the middle of its scale, so a proposal about which there is nothing to say lands in MEDIUM. Simulated over the stored signals of the 158 proposals:
 
-| | faixa | média | desvio | LOW / MEDIUM / HIGH |
+| | Range | Mean | Std. dev. | LOW / MEDIUM / HIGH |
 |---|---|---|---|---|
-| 1.0.0 / 1.1.0 | 50–100 | 82,7 | 11,6 | 135 / 23 / 0 |
-| 1.2.0 | 0–100 | 61,4 | 22,0 | 54 / 75 / 29 |
+| 1.0.0 / 1.1.0 | 50–100 | 82.7 | 11.6 | 135 / 23 / 0 |
+| 1.2.0 | 0–100 | 61.4 | 22.0 | 54 / 75 / 29 |
 
-(As 154 ancoradas não mudam; a tabela mostra só como o método novo as veria.)
+(The 154 anchored analyses do not change; the table only shows how the new method would score them.)
 
-**Correção de nome, 30/09/2026.** O componente saiu como "Delivery of Similar
-Proposals", mas o que a função conta como entregue é ratified/enacted —
-aprovação na votação. Renomeado para "Approval of Similar Proposals" antes de
-qualquer análise 1.2.0 ser ancorada.
+**Name correction, 30 September 2026.** The component first shipped as "Delivery of Similar Proposals", but what the function counts as delivered is ratified or enacted, which means approval by vote. It was renamed "Approval of Similar Proposals" before any 1.2.0 analysis was anchored.
 
-**Pergunta em aberto para o próximo método:** 60 dos 100 pontos dizem "propostas
-parecidas costumam ser aprovadas". Isso prevê aprovação, não risco, e é
-circular: quem vota consulta o score, e o score repete como se votou antes.
+**Open question for the next method:** 60 of the 100 points say "similar proposals tend to be approved". That predicts approval, not risk, and it is circular: voters consult the score, and the score repeats how people voted before.
 
-## Restrição que vale para qualquer caminho
+## Constraint that applies to every option
 
-As 154 análises ancoradas **não são recalculadas** — o documento no bloco é o
-registro. Método novo vale para análise nova, com `PIL_VERSION` subindo e a
-página declarando qual versão produziu cada número (ver "Armadilhas conhecidas"
-no CLAUDE.md).
+The 154 anchored analyses are **never recalculated**: the document on chain is the record. A new method applies to new analyses, with `PIL_VERSION` going up and each page stating which version produced its number.
