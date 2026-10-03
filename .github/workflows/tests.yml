@@ -1,0 +1,37 @@
+name: Tests
+
+# Os testes rodam sem rede e sem banco (tests/ usa mocks), então este job não
+# recebe segredo nenhum. Instala as dependências do worker porque os testes
+# importam worker.py e publisher.py.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-worker.txt
+
+      - name: Run tests
+        env:
+          PIL_ENABLE_ONCHAIN: "false"
+        run: python -m unittest discover tests -v
